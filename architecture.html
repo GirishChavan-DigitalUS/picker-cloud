@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Picker — Architecture</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:       #0d0f14;
+      --surface:  #141720;
+      --surface2: #1b1f2e;
+      --surface3: #22273a;
+      --border:   #252a3a;
+      --border2:  #2e3550;
+      --text:     #e2e8f0;
+      --muted:    #6b7280;
+      --accent:   #7c4dff;
+      --accent2:  #a78bfa;
+      --green:    #26a69a;
+      --red:      #ef5350;
+      --orange:   #ff9800;
+      --gold:     #ffc107;
+      --blue:     #42a5f5;
+      --pink:     #ec407a;
+      --teal:     #26c6da;
+    }
+    html { scroll-behavior: smooth; }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; }
+
+    /* ── NAV ── */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(13,15,20,0.9); backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 40px; height: 52px;
+    }
+    .nav-brand { font-size: 1rem; font-weight: 800; letter-spacing: -0.02em; }
+    .nav-brand em { font-style: normal; color: var(--accent2); }
+    .nav-links { display: flex; gap: 24px; }
+    .nav-links a { color: var(--muted); text-decoration: none; font-size: 0.82rem; font-weight: 500; transition: color .2s; }
+    .nav-links a:hover { color: var(--text); }
+
+    /* ── LAYOUT ── */
+    .page { max-width: 1200px; margin: 0 auto; padding: 0 28px 80px; }
+
+    /* ── HERO ── */
+    .hero {
+      padding: 64px 0 48px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 40px;
+      flex-wrap: wrap;
+    }
+    .hero-left { flex: 1; min-width: 300px; }
+    .chip { display: inline-flex; align-items: center; gap: 6px; background: rgba(124,77,255,0.12); border: 1px solid rgba(124,77,255,0.25); border-radius: 100px; padding: 4px 12px; font-size: 0.7rem; font-weight: 700; color: var(--accent2); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 18px; }
+    .hero h1 { font-size: 2.8rem; font-weight: 800; letter-spacing: -0.04em; line-height: 1.1; }
+    .hero h1 span { color: var(--accent2); }
+    .hero-sub { margin-top: 14px; color: var(--muted); font-size: 1rem; max-width: 480px; }
+    .stat-row { margin-top: 28px; display: flex; gap: 28px; flex-wrap: wrap; }
+    .stat { text-align: center; }
+    .stat-num { font-size: 1.8rem; font-weight: 800; letter-spacing: -0.04em; }
+    .stat-label { font-size: 0.72rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+    .hero-right { flex-shrink: 0; }
+
+    /* version badges */
+    .badge-grid { display: flex; flex-direction: column; gap: 8px; }
+    .badge { display: flex; align-items: center; gap: 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 14px; font-size: 0.8rem; }
+    .badge-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .badge-name { font-weight: 700; }
+    .badge-ver { color: var(--muted); font-size: 0.72rem; margin-left: auto; font-family: monospace; }
+
+    /* ── SECTIONS ── */
+    .section { padding: 56px 0 0; }
+    .section-hdr { margin-bottom: 32px; }
+    .section-label { font-size: 0.68rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent2); margin-bottom: 8px; }
+    .section-title { font-size: 1.7rem; font-weight: 800; letter-spacing: -0.03em; }
+    .section-sub { margin-top: 8px; color: var(--muted); font-size: 0.9rem; }
+
+    /* ── SYSTEM OVERVIEW SVG ── */
+    .overview-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+    .overview-svg { width: 100%; display: block; }
+
+    /* ── DATA FLOW ── */
+    .flow-row { display: flex; align-items: center; gap: 0; margin-top: 28px; flex-wrap: wrap; }
+    .flow-box {
+      background: var(--surface2); border: 1px solid var(--border2);
+      border-radius: 10px; padding: 14px 18px; flex: 1; min-width: 140px;
+      position: relative;
+    }
+    .flow-box h4 { font-size: 0.82rem; font-weight: 700; margin-bottom: 4px; }
+    .flow-box p  { font-size: 0.72rem; color: var(--muted); line-height: 1.5; }
+    .flow-box .fb-tag { font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 6px; }
+    .flow-arrow { font-size: 1.4rem; color: var(--border2); padding: 0 8px; flex-shrink: 0; line-height: 1; }
+    .fb-blue   { border-color: rgba(66,165,245,0.4); }
+    .fb-purple { border-color: rgba(124,77,255,0.4); }
+    .fb-green  { border-color: rgba(38,166,154,0.4); }
+    .fb-gold   { border-color: rgba(255,193,7,0.4); }
+    .fb-orange { border-color: rgba(255,152,0,0.4); }
+
+    /* ── LAYER DIAGRAM ── */
+    .layers { display: flex; flex-direction: column; gap: 3px; margin-top: 28px; }
+    .layer { border-radius: 10px; padding: 18px 24px; display: flex; align-items: center; gap: 20px; }
+    .layer-icon { font-size: 1.4rem; flex-shrink: 0; width: 40px; text-align: center; }
+    .layer-body { flex: 1; }
+    .layer-title { font-weight: 700; font-size: 0.92rem; margin-bottom: 4px; }
+    .layer-sub { font-size: 0.78rem; color: var(--muted); }
+    .layer-tags { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+    .tag { background: rgba(255,255,255,0.06); border: 1px solid var(--border2); border-radius: 4px; padding: 2px 8px; font-size: 0.65rem; font-weight: 600; color: var(--muted); white-space: nowrap; font-family: monospace; }
+    .l-fe  { background: rgba(66,165,245,0.07);  border: 1px solid rgba(66,165,245,0.2); }
+    .l-st  { background: rgba(124,77,255,0.07);  border: 1px solid rgba(124,77,255,0.2); }
+    .l-api { background: rgba(38,166,154,0.07);  border: 1px solid rgba(38,166,154,0.2); }
+    .l-ai  { background: rgba(236,64,122,0.07);  border: 1px solid rgba(236,64,122,0.2); }
+    .l-db  { background: rgba(255,193,7,0.07);   border: 1px solid rgba(255,193,7,0.2); }
+    .l-src { background: rgba(255,152,0,0.07);   border: 1px solid rgba(255,152,0,0.2); }
+
+    /* ── COMPONENT TREE ── */
+    .tree { font-family: monospace; font-size: 0.82rem; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px 28px; line-height: 2; }
+    .tree-fe { color: var(--blue); }
+    .tree-be { color: var(--green); }
+    .tree-db { color: var(--gold); }
+    .tree-ai { color: var(--pink); }
+    .tree-dim { color: var(--muted); }
+    .tree-note { color: var(--accent2); font-size: 0.72rem; margin-left: 8px; }
+
+    /* ── API TABLE ── */
+    .api-table { width: 100%; border-collapse: collapse; margin-top: 24px; font-size: 0.82rem; }
+    .api-table th { text-align: left; padding: 8px 14px; font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); border-bottom: 1px solid var(--border); }
+    .api-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    .api-table tr:last-child td { border-bottom: none; }
+    .api-table tr:hover td { background: rgba(255,255,255,0.02); }
+    .method { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 0.65rem; font-weight: 800; font-family: monospace; letter-spacing: 0.04em; }
+    .m-get  { background: rgba(38,166,154,0.15); color: var(--green); }
+    .m-post { background: rgba(255,152,0,0.15);  color: var(--orange); }
+    .m-del  { background: rgba(239,83,80,0.15);  color: var(--red); }
+    .m-ws   { background: rgba(124,77,255,0.15); color: var(--accent2); }
+    .route-path { font-family: monospace; color: var(--text); }
+    .route-desc { color: var(--muted); font-size: 0.78rem; }
+
+    /* ── DB SCHEMA ── */
+    .schema-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-top: 24px; }
+    .schema-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    .schema-head { background: var(--surface2); padding: 10px 14px; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.07em; display: flex; align-items: center; gap: 8px; }
+    .schema-head .tbl-icon { font-size: 0.9rem; }
+    .schema-body { padding: 6px 0; }
+    .schema-row { display: flex; align-items: center; padding: 5px 14px; gap: 8px; font-size: 0.75rem; }
+    .schema-row:hover { background: rgba(255,255,255,0.02); }
+    .col-name { font-family: monospace; color: var(--text); flex: 1; }
+    .col-type { font-family: monospace; font-size: 0.66rem; color: var(--muted); }
+    .pk { background: rgba(255,193,7,0.15); color: var(--gold); font-size: 0.6rem; font-weight: 700; border-radius: 3px; padding: 1px 5px; }
+    .fk { background: rgba(66,165,245,0.12); color: var(--blue); font-size: 0.6rem; font-weight: 700; border-radius: 3px; padding: 1px 5px; }
+
+    /* ── INDICATORS LIST ── */
+    .ind-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: 24px; }
+    .ind-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; }
+    .ind-card .ind-name { font-size: 0.82rem; font-weight: 700; margin-bottom: 4px; }
+    .ind-card .ind-file { font-family: monospace; font-size: 0.66rem; color: var(--accent2); margin-bottom: 6px; }
+    .ind-card .ind-desc { font-size: 0.75rem; color: var(--muted); line-height: 1.5; }
+    .ind-card .ind-output { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 4px; }
+    .out-tag { background: var(--surface2); border: 1px solid var(--border2); border-radius: 3px; padding: 1px 6px; font-size: 0.62rem; font-family: monospace; color: #94a3b8; }
+
+    /* ── WS MESSAGE ── */
+    .msg-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-top: 24px; }
+    .msg-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; }
+    .msg-type { font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; padding: 3px 8px; border-radius: 4px; display: inline-block; }
+    .mt-price { background: rgba(38,166,154,0.15); color: var(--green); }
+    .mt-pred  { background: rgba(236,64,122,0.15); color: var(--pink); }
+    .mt-sig   { background: rgba(255,152,0,0.15);  color: var(--orange); }
+    .mt-alert { background: rgba(239,83,80,0.15);  color: var(--red); }
+    .msg-field { display: flex; justify-content: space-between; font-size: 0.75rem; padding: 3px 0; border-bottom: 1px solid var(--border); }
+    .msg-field:last-child { border-bottom: none; }
+    .mf-key { color: var(--muted); font-family: monospace; }
+    .mf-val { color: var(--text); font-family: monospace; font-size: 0.68rem; }
+
+    /* ── AI EVALUATOR ── */
+    .ai-flow { margin-top: 24px; display: flex; flex-direction: column; gap: 3px; }
+    .ai-step { display: flex; align-items: flex-start; gap: 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 18px; }
+    .ai-step-num { width: 28px; height: 28px; border-radius: 50%; background: rgba(236,64,122,0.15); border: 1px solid rgba(236,64,122,0.3); color: var(--pink); font-size: 0.78rem; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; }
+    .ai-step-body h4 { font-size: 0.85rem; font-weight: 700; margin-bottom: 4px; }
+    .ai-step-body p  { font-size: 0.78rem; color: var(--muted); line-height: 1.55; }
+    .ai-step-body code { background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; font-size: 0.72rem; color: var(--accent2); }
+
+    /* ── RULE TABLE ── */
+    .rule-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; margin-top: 16px; }
+    .rule-table th { text-align: left; padding: 6px 12px; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); border-bottom: 1px solid var(--border); }
+    .rule-table td { padding: 8px 12px; border-bottom: 1px solid rgba(37,42,58,0.6); vertical-align: top; }
+    .rule-table tr:hover td { background: rgba(255,255,255,0.02); }
+    .dir-up { color: var(--green); font-weight: 700; font-size: 0.7rem; }
+    .dir-dn { color: var(--red);   font-weight: 700; font-size: 0.7rem; }
+    .rule-id { font-family: monospace; color: var(--accent2); font-size: 0.72rem; }
+    .weight-badge { background: rgba(255,193,7,0.12); color: var(--gold); border-radius: 3px; padding: 1px 6px; font-size: 0.65rem; font-weight: 700; }
+
+    /* ── SCHEDULER ── */
+    .cycle-steps { display: flex; gap: 0; margin-top: 20px; overflow-x: auto; }
+    .cs { flex: 1; min-width: 110px; text-align: center; padding: 0 6px; position: relative; }
+    .cs + .cs::before { content: '→'; position: absolute; left: -6px; top: 24px; color: var(--border2); font-size: 1.1rem; }
+    .cs-icon { width: 50px; height: 50px; border-radius: 50%; background: var(--surface2); border: 1px solid var(--border2); margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+    .cs h4 { font-size: 0.75rem; font-weight: 700; margin-bottom: 4px; }
+    .cs p  { font-size: 0.67rem; color: var(--muted); line-height: 1.4; }
+
+    /* ── FOOTER ── */
+    footer { border-top: 1px solid var(--border); padding: 24px 28px; margin-top: 80px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; font-size: 0.75rem; color: var(--muted); }
+    footer a { color: var(--muted); text-decoration: none; }
+    footer a:hover { color: var(--text); }
+
+    @media print {
+      nav { position: static; }
+      .section { page-break-inside: avoid; }
+    }
+    @media (max-width: 768px) {
+      nav { padding: 0 20px; }
+      .nav-links { display: none; }
+      .hero h1 { font-size: 2rem; }
+      .flow-row { flex-direction: column; }
+      .flow-arrow { transform: rotate(90deg); }
+
+      /* Section spacing */
+      .section { padding: 40px 16px; }
+      .section-title { font-size: 1.4rem; }
+
+      /* SVG diagram: horizontal scroll instead of squish */
+      .overview-svg { width: 900px; max-width: none; }
+      .section:has(.overview-svg) > .section-hdr { margin-bottom: 12px; }
+      .section > div:has(> .overview-svg) { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+      /* Layer blocks: single column */
+      .layers-grid,
+      [class*="layer-"] { width: 100% !important; }
+
+      /* DB table: allow horizontal scroll */
+      .db-table-wrap { overflow-x: auto; }
+
+      /* Reduce version badges wrap */
+      .badge-row { flex-wrap: wrap; gap: 6px; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand">Picker <em>📈</em> — Architecture</div>
+  <div class="nav-links">
+    <a href="#cloud">Cloud</a>
+    <a href="#overview">Overview</a>
+    <a href="#layers">Layers</a>
+    <a href="#dataflow">Data Flow</a>
+    <a href="#api">API</a>
+    <a href="#db">Database</a>
+    <a href="#indicators">Indicators</a>
+    <a href="#ai">AI Engine</a>
+    <a href="#llm">LLM</a>
+    <a href="#websocket">WebSocket</a>
+    <a href="#pwa">PWA</a>
+  </div>
+</nav>
+
+<div class="page">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-left">
+      <div class="chip">Technical Architecture</div>
+      <h1>Picker<br><span>System Design</span></h1>
+      <p class="hero-sub">Full-stack real-time NYSE intraday dashboard. Python/FastAPI backend with a 1-minute scheduler for 12 tickers, 33-rule AI evaluator, 5 composite alert detectors, optional LLM commentary and on-demand Tape Read narrative. Frontend is a <strong>PWA</strong> (vite-plugin-pwa + Workbox) with <strong>Web Push notifications</strong> (VAPID via pywebpush) for Tier 1 &amp; 2 alerts. Features InsightGrid with 8-pattern detection, MacroBanner macro alignment, per-card HTF bias + volume + signal age context, TrendStructureTimeline swimlane, and a built-in signal guide. SQLite persistence (6 tables including push_subscriptions), React/Zustand, WebSocket.</p>
+      <div class="stat-row">
+        <div class="stat"><div class="stat-num" style="color:var(--blue)">5</div><div class="stat-label">Layers</div></div>
+        <div class="stat"><div class="stat-num" style="color:var(--green)">20+</div><div class="stat-label">Indicators</div></div>
+        <div class="stat"><div class="stat-num" style="color:var(--pink)">33</div><div class="stat-label">AI Rules</div></div>
+        <div class="stat"><div class="stat-num" style="color:var(--red)">5</div><div class="stat-label">Composite Alerts</div></div>
+        <div class="stat"><div class="stat-num" style="color:var(--gold)">6</div><div class="stat-label">DB Tables</div></div>
+        <div class="stat"><div class="stat-num" style="color:var(--orange)">4</div><div class="stat-label">WS Msg Types</div></div>
+        <div class="stat"><div class="stat-num" style="color:#818cf8">4</div><div class="stat-label">LLM Providers</div></div>
+        <div class="stat"><div class="stat-num" style="color:var(--teal)">8</div><div class="stat-label">Patterns</div></div>
+        <div class="stat"><div class="stat-num" style="color:#fb923c">12</div><div class="stat-label">Tickers</div></div>
+      </div>
+    </div>
+    <div class="hero-right">
+      <div class="badge-grid">
+        <div class="badge"><div class="badge-dot" style="background:var(--blue)"></div><span class="badge-name">React</span><span class="badge-ver">19 + TypeScript</span></div>
+        <div class="badge"><div class="badge-dot" style="background:var(--accent2)"></div><span class="badge-name">Zustand</span><span class="badge-ver">5.0.13</span></div>
+        <div class="badge"><div class="badge-dot" style="background:#34d399"></div><span class="badge-name">Lightweight Charts</span><span class="badge-ver">v5.2.0</span></div>
+        <div class="badge"><div class="badge-dot" style="background:var(--green)"></div><span class="badge-name">FastAPI</span><span class="badge-ver">0.115.5</span></div>
+        <div class="badge"><div class="badge-dot" style="background:#3b82f6"></div><span class="badge-name">Python</span><span class="badge-ver">3.11 / uvicorn</span></div>
+        <div class="badge"><div class="badge-dot" style="background:var(--gold)"></div><span class="badge-name">yfinance</span><span class="badge-ver">1.3.0</span></div>
+        <div class="badge"><div class="badge-dot" style="background:#9ca3af"></div><span class="badge-name">SQLite</span><span class="badge-ver">aiosqlite 0.20</span></div>
+        <div class="badge"><div class="badge-dot" style="background:#646cff"></div><span class="badge-name">Vite</span><span class="badge-ver">8 + pnpm</span></div>
+        <div class="badge"><div class="badge-dot" style="background:#00e5a0"></div><span class="badge-name">vite-plugin-pwa</span><span class="badge-ver">1.3.0 + Workbox 7</span></div>
+        <div class="badge"><div class="badge-dot" style="background:#818cf8"></div><span class="badge-name">LLM Commentary</span><span class="badge-ver">Gemini · GPT · Claude · Ollama</span></div>
+        <div class="badge"><div class="badge-dot" style="background:#fb923c"></div><span class="badge-name">pywebpush</span><span class="badge-ver">2.0.0 · VAPID Web Push</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CLOUD DEPLOYMENT -->
+  <div class="section" id="cloud">
+    <div class="section-hdr">
+      <div class="section-label">Cloud Deployment</div>
+      <div class="section-title">AWS Infrastructure</div>
+      <div class="section-sub">Single EC2 t2.micro in us-east-1. Auto start 7:45 AM ET / stop 8:15 PM ET via Lambda + EventBridge. ~$1.80/month (free tier) or ~$8.42/month (post-free).</div>
+    </div>
+    <div class="flow-row" style="margin-top:28px;align-items:stretch;gap:3px;">
+      <div class="flow-box fb-orange" style="flex:none;width:160px;text-align:center;">
+        <div class="fb-tag" style="color:var(--orange)">SCHEDULE</div>
+        <h4>EventBridge</h4>
+        <p>cron(45 11 * * ? *) start<br>cron(15 0 * * ? *) stop</p>
+      </div>
+      <div class="flow-arrow">&#8594;</div>
+      <div class="flow-box fb-gold" style="flex:none;width:160px;text-align:center;">
+        <div class="fb-tag" style="color:var(--gold)">LAMBDA</div>
+        <h4>picker-ec2-start<br>picker-ec2-stop</h4>
+        <p>Python 3.12 · 128 MB<br>ec2:Start/StopInstances</p>
+      </div>
+      <div class="flow-arrow">&#8594;</div>
+      <div class="flow-box fb-green" style="flex:2;text-align:center;">
+        <div class="fb-tag" style="color:var(--green)">EC2 t2.micro · us-east-1</div>
+        <h4 style="font-size:0.95rem;">nysepicker.duckdns.org</h4>
+        <p style="font-size:0.78rem;margin-top:6px;">
+          Amazon Linux 2023 &nbsp;|&nbsp; 8 GB gp3 EBS (encrypted) &nbsp;|&nbsp; systemd auto-restart<br>
+          <span style="color:var(--blue)">Nginx :80</span> &rarr; static <code style="font-size:0.7rem">frontend/dist/</code> &nbsp;&amp;&amp;&nbsp; proxy /api/, /ws &rarr; <span style="color:var(--green)">uvicorn 127.0.0.1:8000</span>
+        </p>
+      </div>
+      <div class="flow-arrow">&#8594;</div>
+      <div class="flow-box fb-blue" style="flex:none;width:160px;text-align:center;">
+        <div class="fb-tag" style="color:var(--blue)">CLIENT</div>
+        <h4>Browser</h4>
+        <p>React SPA<br>WS relative URL</p>
+      </div>
+    </div>
+    <div class="flow-row" style="margin-top:12px;gap:12px;flex-wrap:wrap;">
+      <div class="flow-box fb-purple" style="flex:1;min-width:200px;">
+        <div class="fb-tag" style="color:var(--accent2)">IAM ROLES</div>
+        <h4>picker-ec2-role</h4>
+        <p>CloudWatchAgentServerPolicy<br>AmazonSSMManagedInstanceCore</p>
+      </div>
+      <div class="flow-box fb-purple" style="flex:1;min-width:200px;">
+        <div class="fb-tag" style="color:var(--accent2)">IAM ROLES</div>
+        <h4>picker-lambda-ec2-role</h4>
+        <p>AWSLambdaBasicExecutionRole<br>ec2:Start/StopInstances (scoped)</p>
+      </div>
+      <div class="flow-box fb-gold" style="flex:1;min-width:200px;">
+        <div class="fb-tag" style="color:var(--gold)">SECURITY GROUP</div>
+        <h4>picker-sg</h4>
+        <p>:80 open (0.0.0.0/0)<br>:22 restricted to admin IP<br>All outbound allowed</p>
+      </div>
+      <div class="flow-box fb-green" style="flex:1;min-width:200px;">
+        <div class="fb-tag" style="color:var(--green)">COST (free tier)</div>
+        <h4>~$1.80 / month</h4>
+        <p>EC2 360 hrs &lt; 750 free<br>EBS 8 GB &lt; 30 GB free<br>EIP idle hrs $0.005/hr</p>
+      </div>
+      <div class="flow-box fb-blue" style="flex:1;min-width:200px;">
+        <div class="fb-tag" style="color:var(--blue)">DEPLOY</div>
+        <h4>deploy/</h4>
+        <p>cloudformation.yaml — full stack<br>bootstrap.sh — first-time setup<br>deploy.sh — subsequent releases</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SYSTEM OVERVIEW -->
+  <div class="section" id="overview">
+    <div class="section-hdr">
+      <div class="section-label">System Overview</div>
+      <div class="section-title">High-level architecture</div>
+      <div class="section-sub">Three runtime processes communicating over HTTP REST and WebSocket.</div>
+    </div>
+    <div class="overview-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+      <svg class="overview-svg" viewBox="0 0 1100 420" xmlns="http://www.w3.org/2000/svg" style="font-family:-apple-system,sans-serif;min-width:700px;">
+        <defs>
+          <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#3d4a6e"/></marker>
+          <marker id="arr-g" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#26a69a"/></marker>
+          <marker id="arr-p" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#7c4dff"/></marker>
+        </defs>
+
+        <!-- Background zones -->
+        <rect x="10" y="10" width="330" height="400" rx="12" fill="rgba(66,165,245,0.04)" stroke="rgba(66,165,245,0.18)" stroke-width="1"/>
+        <text x="175" y="34" fill="#42a5f5" font-size="11" font-weight="700" text-anchor="middle" letter-spacing="2" opacity="0.9">BROWSER  /  FRONTEND</text>
+
+        <rect x="380" y="10" width="370" height="400" rx="12" fill="rgba(38,166,154,0.04)" stroke="rgba(38,166,154,0.18)" stroke-width="1"/>
+        <text x="565" y="34" fill="#26a69a" font-size="11" font-weight="700" text-anchor="middle" letter-spacing="2" opacity="0.9">PYTHON  BACKEND</text>
+
+        <rect x="790" y="10" width="300" height="400" rx="12" fill="rgba(255,193,7,0.04)" stroke="rgba(255,193,7,0.15)" stroke-width="1"/>
+        <text x="940" y="34" fill="#ffc107" font-size="11" font-weight="700" text-anchor="middle" letter-spacing="2" opacity="0.9">DATA  /  PERSISTENCE</text>
+
+        <!-- ── Frontend boxes ── -->
+        <!-- App.tsx -->
+        <rect x="30" y="55" width="140" height="52" rx="7" fill="#1b1f2e" stroke="rgba(66,165,245,0.4)" stroke-width="1"/>
+        <text x="100" y="76" fill="#e2e8f0" font-size="10" font-weight="700" text-anchor="middle">App.tsx</text>
+        <text x="100" y="91" fill="#6b7280" font-size="9" text-anchor="middle">Layout · Init · State</text>
+        <text x="100" y="103" fill="#6b7280" font-size="8" text-anchor="middle">ticker list + detail area</text>
+
+        <!-- TickerGrid -->
+        <rect x="30" y="127" width="140" height="44" rx="7" fill="#1b1f2e" stroke="rgba(66,165,245,0.35)" stroke-width="1"/>
+        <text x="100" y="147" fill="#e2e8f0" font-size="10" font-weight="700" text-anchor="middle">TickerGrid</text>
+        <text x="100" y="162" fill="#6b7280" font-size="9" text-anchor="middle">Watchlist · Sort · Add/Remove</text>
+
+        <!-- TickerDetail -->
+        <rect x="30" y="191" width="140" height="44" rx="7" fill="#1b1f2e" stroke="rgba(66,165,245,0.35)" stroke-width="1"/>
+        <text x="100" y="211" fill="#e2e8f0" font-size="10" font-weight="700" text-anchor="middle">TickerDetail</text>
+        <text x="100" y="226" fill="#6b7280" font-size="9" text-anchor="middle">Chart · Indicators · AI Panel</text>
+
+        <!-- CandlestickChart -->
+        <rect x="30" y="255" width="140" height="44" rx="7" fill="#1b1f2e" stroke="rgba(66,165,245,0.3)" stroke-width="1"/>
+        <text x="100" y="275" fill="#e2e8f0" font-size="10" font-weight="700" text-anchor="middle">CandlestickChart</text>
+        <text x="100" y="290" fill="#6b7280" font-size="9" text-anchor="middle">LW-Charts v5 · Session BG</text>
+
+        <!-- Stores -->
+        <rect x="190" y="55" width="130" height="52" rx="7" fill="#1b1f2e" stroke="rgba(124,77,255,0.4)" stroke-width="1"/>
+        <text x="255" y="74" fill="#a78bfa" font-size="10" font-weight="700" text-anchor="middle">marketStore</text>
+        <text x="255" y="89" fill="#6b7280" font-size="9" text-anchor="middle">Zustand · tickers{}</text>
+        <text x="255" y="101" fill="#6b7280" font-size="8" text-anchor="middle">prices · indicators · predictions</text>
+
+        <rect x="190" y="127" width="130" height="44" rx="7" fill="#1b1f2e" stroke="rgba(124,77,255,0.35)" stroke-width="1"/>
+        <text x="255" y="147" fill="#a78bfa" font-size="10" font-weight="700" text-anchor="middle">wsStore</text>
+        <text x="255" y="162" fill="#6b7280" font-size="9" text-anchor="middle">WebSocket · reconnect</text>
+
+        <rect x="190" y="191" width="130" height="44" rx="7" fill="#1b1f2e" stroke="rgba(124,77,255,0.3)" stroke-width="1"/>
+        <text x="255" y="211" fill="#a78bfa" font-size="10" font-weight="700" text-anchor="middle">useWebSocket</text>
+        <text x="255" y="226" fill="#6b7280" font-size="9" text-anchor="middle">hook · connect/disconnect</text>
+
+        <!-- ── Backend boxes ── -->
+        <!-- main.py -->
+        <rect x="398" y="55" width="140" height="52" rx="7" fill="#1b1f2e" stroke="rgba(38,166,154,0.4)" stroke-width="1"/>
+        <text x="468" y="74" fill="#e2e8f0" font-size="10" font-weight="700" text-anchor="middle">main.py</text>
+        <text x="468" y="89" fill="#6b7280" font-size="9" text-anchor="middle">FastAPI · CORS · Lifespan</text>
+        <text x="468" y="101" fill="#6b7280" font-size="8" text-anchor="middle">127.0.0.1:8000 (internal)</text>
+
+        <!-- scheduler -->
+        <rect x="398" y="127" width="140" height="52" rx="7" fill="#1b1f2e" stroke="rgba(38,166,154,0.4)" stroke-width="1"/>
+        <text x="468" y="147" fill="#e2e8f0" font-size="10" font-weight="700" text-anchor="middle">scheduler.py</text>
+        <text x="468" y="162" fill="#6b7280" font-size="9" text-anchor="middle">asyncio · 5-min cycle</text>
+        <text x="468" y="174" fill="#6b7280" font-size="8" text-anchor="middle">_process_ticker() · composite alerts</text>
+
+        <!-- indicators -->
+        <rect x="398" y="199" width="140" height="44" rx="7" fill="#1b1f2e" stroke="rgba(38,166,154,0.35)" stroke-width="1"/>
+        <text x="468" y="219" fill="#e2e8f0" font-size="10" font-weight="700" text-anchor="middle">indicators/</text>
+        <text x="468" y="234" fill="#6b7280" font-size="9" text-anchor="middle">ema · vwap · sr · swings…</text>
+
+        <!-- ai -->
+        <rect x="398" y="263" width="140" height="44" rx="7" fill="#1b1f2e" stroke="rgba(236,64,122,0.4)" stroke-width="1"/>
+        <text x="468" y="283" fill="#ec407a" font-size="10" font-weight="700" text-anchor="middle">ai/evaluator.py</text>
+        <text x="468" y="298" fill="#6b7280" font-size="9" text-anchor="middle">Rules · Weights · Confidence</text>
+
+        <!-- API routes -->
+        <rect x="558" y="55" width="170" height="52" rx="7" fill="#1b1f2e" stroke="rgba(38,166,154,0.35)" stroke-width="1"/>
+        <text x="643" y="72" fill="#e2e8f0" font-size="10" font-weight="700" text-anchor="middle">api/routes_*.py</text>
+        <text x="643" y="87" fill="#6b7280" font-size="8.5" text-anchor="middle">GET /dashboard · /candles/{t}</text>
+        <text x="643" y="99" fill="#6b7280" font-size="8.5" text-anchor="middle">POST /ticker/{t}/refresh · /refresh-all</text>
+
+        <!-- WS -->
+        <rect x="558" y="127" width="170" height="44" rx="7" fill="#1b1f2e" stroke="rgba(124,77,255,0.4)" stroke-width="1"/>
+        <text x="643" y="147" fill="#a78bfa" font-size="10" font-weight="700" text-anchor="middle">api/ws.py</text>
+        <text x="643" y="162" fill="#6b7280" font-size="9" text-anchor="middle">broadcast() · WS /ws</text>
+
+        <!-- db.py -->
+        <rect x="558" y="191" width="170" height="44" rx="7" fill="#1b1f2e" stroke="rgba(255,193,7,0.35)" stroke-width="1"/>
+        <text x="643" y="211" fill="#ffc107" font-size="10" font-weight="700" text-anchor="middle">db.py</text>
+        <text x="643" y="226" fill="#6b7280" font-size="9" text-anchor="middle">aiosqlite · upsert · fetch</text>
+
+        <!-- mcp_client -->
+        <rect x="558" y="255" width="170" height="44" rx="7" fill="#1b1f2e" stroke="rgba(255,152,0,0.35)" stroke-width="1"/>
+        <text x="643" y="275" fill="#ff9800" font-size="10" font-weight="700" text-anchor="middle">mcp_client.py</text>
+        <text x="643" y="290" fill="#6b7280" font-size="9" text-anchor="middle">yfinance wrapper · fetch_ticker()</text>
+
+        <!-- ── Data boxes ── -->
+        <!-- yfinance -->
+        <rect x="808" y="55" width="260" height="52" rx="7" fill="#1b1f2e" stroke="rgba(255,152,0,0.4)" stroke-width="1"/>
+        <text x="938" y="74" fill="#ff9800" font-size="10" font-weight="700" text-anchor="middle">yfinance 1.3</text>
+        <text x="938" y="89" fill="#6b7280" font-size="9" text-anchor="middle">period=5d · interval=5m · prepost=True</text>
+        <text x="938" y="101" fill="#6b7280" font-size="8" text-anchor="middle">^GSPC alias for SPX</text>
+
+        <!-- SQLite -->
+        <rect x="808" y="127" width="260" height="52" rx="7" fill="#1b1f2e" stroke="rgba(255,193,7,0.4)" stroke-width="1"/>
+        <text x="938" y="147" fill="#ffc107" font-size="10" font-weight="700" text-anchor="middle">SQLite — picker.db</text>
+        <text x="938" y="162" fill="#6b7280" font-size="9" text-anchor="middle">candles · indicators · predictions</text>
+        <text x="938" y="174" fill="#6b7280" font-size="8" text-anchor="middle">signals · composite_alerts · (aiosqlite)</text>
+
+        <!-- LocalStorage -->
+        <rect x="808" y="199" width="260" height="44" rx="7" fill="#1b1f2e" stroke="rgba(66,165,245,0.3)" stroke-width="1"/>
+        <text x="938" y="219" fill="#42a5f5" font-size="10" font-weight="700" text-anchor="middle">localStorage</text>
+        <text x="938" y="234" fill="#6b7280" font-size="9" text-anchor="middle">picker_tickers — watchlist persistence</text>
+
+        <!-- ── Arrows ── -->
+        <!-- FE internal -->
+        <line x1="100" y1="107" x2="100" y2="127" stroke="#3d4a6e" stroke-width="1.2" marker-end="url(#arr)"/>
+        <line x1="100" y1="171" x2="100" y2="191" stroke="#3d4a6e" stroke-width="1.2" marker-end="url(#arr)"/>
+        <line x1="100" y1="235" x2="100" y2="255" stroke="#3d4a6e" stroke-width="1.2" marker-end="url(#arr)"/>
+        <line x1="170" y1="80" x2="190" y2="80" stroke="#5c5080" stroke-width="1.2" marker-end="url(#arr)"/>
+        <line x1="255" y1="107" x2="255" y2="127" stroke="#5c5080" stroke-width="1.2" marker-end="url(#arr)"/>
+        <line x1="255" y1="171" x2="255" y2="191" stroke="#5c5080" stroke-width="1.2" marker-end="url(#arr)"/>
+
+        <!-- REST: FE → BE -->
+        <line x1="320" y1="81" x2="398" y2="81" stroke="#26a69a" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arr-g)"/>
+        <text x="358" y="76" fill="#26a69a" font-size="8" text-anchor="middle">REST HTTP</text>
+
+        <!-- WS: wsStore → api/ws -->
+        <line x1="320" y1="149" x2="558" y2="149" stroke="#7c4dff" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arr-p)"/>
+        <text x="440" y="143" fill="#a78bfa" font-size="8" text-anchor="middle">WebSocket</text>
+
+        <!-- BE internal -->
+        <line x1="538" y1="81" x2="558" y2="81" stroke="#3d4a6e" stroke-width="1.2" marker-end="url(#arr)"/>
+        <line x1="468" y1="179" x2="468" y2="199" stroke="#3d4a6e" stroke-width="1.2" marker-end="url(#arr)"/>
+        <line x1="468" y1="243" x2="468" y2="263" stroke="#3d4a6e" stroke-width="1.2" marker-end="url(#arr)"/>
+        <line x1="643" y1="107" x2="643" y2="127" stroke="#3d4a6e" stroke-width="1.2" marker-end="url(#arr)"/>
+        <line x1="643" y1="171" x2="643" y2="191" stroke="#3d4a6e" stroke-width="1.2" marker-end="url(#arr)"/>
+        <line x1="643" y1="235" x2="643" y2="255" stroke="#3d4a6e" stroke-width="1.2" marker-end="url(#arr)"/>
+
+        <!-- Scheduler → ws, db, indicators, ai -->
+        <line x1="538" y1="153" x2="558" y2="153" stroke="#3d4a6e" stroke-width="1.2" marker-end="url(#arr)"/>
+        <line x1="538" y1="221" x2="558" y2="221" stroke="#3d4a6e" stroke-width="1.2" marker-end="url(#arr)"/>
+        <line x1="538" y1="277" x2="558" y2="277" stroke="#3d4a6e" stroke-width="1.2" marker-end="url(#arr)"/>
+
+        <!-- BE → Data -->
+        <line x1="728" y1="81" x2="808" y2="81" stroke="#ff9800" stroke-width="1.5" marker-end="url(#arr)"/>
+        <text x="768" y="76" fill="#ff9800" font-size="8" text-anchor="middle">fetch OHLCV</text>
+        <line x1="728" y1="214" x2="808" y2="214" stroke="#ffc107" stroke-width="1.5" marker-end="url(#arr)"/>
+        <text x="768" y="209" fill="#ffc107" font-size="8" text-anchor="middle">read/write</text>
+
+        <!-- FE → localStorage -->
+        <line x1="295" y1="300" x2="808" y2="221" stroke="#42a5f5" stroke-width="1" stroke-dasharray="4,4" opacity="0.5" marker-end="url(#arr)"/>
+        <text x="550" y="295" fill="#42a5f5" font-size="7.5" text-anchor="middle" opacity="0.7">localStorage.setItem()</text>
+
+        <!-- port labels -->
+        <text x="100" y="380" fill="#42a5f5" font-size="9" text-anchor="middle" opacity="0.7">Nginx :80</text>
+        <text x="468" y="380" fill="#26a69a" font-size="9" text-anchor="middle" opacity="0.7">uvicorn :8000 (internal)</text>
+        <text x="938" y="380" fill="#ffc107" font-size="9" text-anchor="middle" opacity="0.7">backend/picker.db</text>
+      </svg>
+    </div>
+  </div>
+
+  <!-- LAYERS -->
+  <div class="section" id="layers">
+    <div class="section-hdr">
+      <div class="section-label">Layer Model</div>
+      <div class="section-title">5-layer stack</div>
+      <div class="section-sub">Each layer has a single responsibility and communicates only with adjacent layers.</div>
+    </div>
+    <div class="layers">
+      <div class="layer l-fe">
+        <div class="layer-icon">🖥️</div>
+        <div class="layer-body">
+          <div class="layer-title">Presentation Layer — React + TypeScript</div>
+          <div class="layer-sub">App.tsx · TickerGrid · TickerRow · TickerDetail · CandlestickChart · AlertsPanel · TimeframeSelector · CostDashboard. Renders UI, handles drag-resize, reads Zustand store. Multi-timeframe switcher (2m/5m/15m) in header re-subscribes WS and re-fetches REST. AWS cost dashboard modal accessible from header.</div>
+        </div>
+        <div class="layer-tags">
+          <span class="tag">React 19</span><span class="tag">Vite 8</span><span class="tag">pnpm</span><span class="tag">LW-Charts v5</span>
+        </div>
+      </div>
+      <div class="layer l-st">
+        <div class="layer-icon">🗄️</div>
+        <div class="layer-body">
+          <div class="layer-title">State Layer — Zustand stores</div>
+          <div class="layer-sub">marketStore holds all ticker state (price, candles, indicators, prediction). wsStore owns the WebSocket connection and dispatches messages into marketStore.handleWsMessage().</div>
+        </div>
+        <div class="layer-tags">
+          <span class="tag">zustand 5</span><span class="tag">marketStore</span><span class="tag">wsStore</span>
+        </div>
+      </div>
+      <div class="layer l-api">
+        <div class="layer-icon">🔌</div>
+        <div class="layer-body">
+          <div class="layer-title">Transport Layer — FastAPI REST + WebSocket</div>
+          <div class="layer-sub">routes_candles / indicators / signals / predictions / composite serve historical data on load (all accept <code>?timeframe=2m|5m|15m</code>). routes_push handles VAPID web-push subscriptions. <strong>routes_costs</strong> exposes <code>GET /costs/summary</code> backed by AWS Cost Explorer + Budgets (boto3) with a 1-hour in-process cache. ws.py maintains connected clients and exposes broadcast(). In production, Nginx proxies /api/* and /ws from port 80/443.</div>
+        </div>
+        <div class="layer-tags">
+          <span class="tag">FastAPI 0.115</span><span class="tag">uvicorn</span><span class="tag">WebSocket</span><span class="tag">axios</span><span class="tag">boto3</span>
+        </div>
+      </div>
+      <div class="layer l-ai">
+        <div class="layer-icon">🤖</div>
+        <div class="layer-body">
+          <div class="layer-title">Computation Layer — Indicators + AI Evaluator</div>
+          <div class="layer-sub">scheduler._loop() runs one asyncio task per timeframe, each firing on <strong>clock-aligned boundaries from the top of the hour</strong> (2m at :00, :02, :04 +15s stagger; 5m at :00, :05, :10 +30s stagger; 15m at :00, :15, :30, :45 +45s stagger). Calls 10 indicator modules, 3 signal detectors, ai.evaluator.run_evaluation(), and signals.composite.evaluate_composite() for 5 tiered alert patterns. Per-TF results stored in SQLite (candles/indicators/predictions/composite_alerts tables all keyed on <code>timeframe</code>) and broadcast over WS to clients subscribed to that TF.</div>
+        </div>
+        <div class="layer-tags">
+          <span class="tag">pandas</span><span class="tag">numpy</span><span class="tag">asyncio</span><span class="tag">scheduler.py</span>
+        </div>
+      </div>
+      <div class="layer l-src">
+        <div class="layer-icon">📡</div>
+        <div class="layer-body">
+          <div class="layer-title">Data Layer — yfinance + SQLite</div>
+          <div class="layer-sub">mcp_client.tv_mcp.fetch_ticker() pulls 5-day/5-min OHLCV. db.py handles all async SQLite I/O via aiosqlite. On-demand refresh via POST /api/ticker/{ticker}/refresh.</div>
+        </div>
+        <div class="layer-tags">
+          <span class="tag">yfinance 1.3</span><span class="tag">SQLite</span><span class="tag">aiosqlite 0.20</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DATA FLOW -->
+  <div class="section" id="dataflow">
+    <div class="section-hdr">
+      <div class="section-label">Data Flow</div>
+      <div class="section-title">End-to-end cycle (per timeframe, clock-aligned)</div>
+    </div>
+    <div class="cycle-steps">
+      <div class="cs"><div class="cs-icon">⏱️</div><h4>Timer fires</h4><p>scheduler._loop() wakes at the next clock-aligned boundary (top-of-hour + N·interval + stagger)</p></div>
+      <div class="cs"><div class="cs-icon">📥</div><h4>Fetch OHLCV</h4><p>mcp_client fetches 5d/5m bars from yfinance for each ticker</p></div>
+      <div class="cs"><div class="cs-icon">💾</div><h4>Persist Candles</h4><p>db.upsert_candles() writes bars to candles table (upsert on timestamp)</p></div>
+      <div class="cs"><div class="cs-icon">📐</div><h4>Compute Indicators</h4><p>7 modules run sequentially over the DataFrame in-process</p></div>
+      <div class="cs"><div class="cs-icon">🤖</div><h4>AI Evaluation</h4><p>Rule engine → UP/DOWN + confidence. evaluate_composite() checks 5 alert patterns.</p></div>
+      <div class="cs"><div class="cs-icon">🚨</div><h4>Composite Alerts</h4><p>Matched alerts deduped (5 min) and inserted into composite_alerts table.</p></div>
+      <div class="cs"><div class="cs-icon">📡</div><h4>Broadcast</h4><p>price_update + prediction + composite_alert messages sent to all WS clients</p></div>
+      <div class="cs"><div class="cs-icon">🔀</div><h4>Store Merge</h4><p>handleWsMessage() merges partial update into existing Zustand state</p></div>
+      <div class="cs"><div class="cs-icon">🖥️</div><h4>Re-render</h4><p>React re-renders only subscribed components; chart & panels update</p></div>
+    </div>
+
+    <!-- Startup flow -->
+    <div style="margin-top:32px;">
+      <div style="font-size:0.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px;">Startup / Initial Load</div>
+      <div class="flow-row">
+        <div class="flow-box fb-blue"><div class="fb-tag" style="color:var(--blue)">Browser</div><h4>App mounts</h4><p>Calls GET /api/dashboard to hydrate all tickers with latest DB snapshot</p></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box fb-green"><div class="fb-tag" style="color:var(--green)">Backend</div><h4>Dashboard query</h4><p>Reads latest indicators + prediction + price from SQLite for each ticker</p></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box fb-purple"><div class="fb-tag" style="color:var(--accent2)">Store</div><h4>setIndicators / setPrediction</h4><p>Zustand state populated; components render with real data immediately</p></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box fb-purple"><div class="fb-tag" style="color:var(--accent2)">WS</div><h4>wsStore.connect()</h4><p>WebSocket opens to <code>ws://&lt;host&gt;/ws</code> (relative, via Nginx). Subsequent updates arrive in real time.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- API -->
+  <div class="section" id="api">
+    <div class="section-hdr">
+      <div class="section-label">REST + WebSocket API</div>
+      <div class="section-title">Endpoints</div>
+    </div>
+    <table class="api-table">
+      <thead><tr><th>Method</th><th>Path</th><th>Description</th><th>Used by</th></tr></thead>
+      <tbody>
+        <tr><td><span class="method m-get">GET</span></td><td class="route-path">/api/dashboard</td><td class="route-desc">Latest indicators + prediction + price for every tracked ticker. Single-call hydration on startup.</td><td><span class="tag">App.tsx useEffect</span></td></tr>
+        <tr><td><span class="method m-get">GET</span></td><td class="route-path">/api/candles/{ticker}</td><td class="route-desc">Returns up to N OHLCV bars. Query params: limit, today_only. Used to populate the chart on detail open.</td><td><span class="tag">TickerDetail</span></td></tr>
+        <tr><td><span class="method m-get">GET</span></td><td class="route-path">/api/indicators/{ticker}</td><td class="route-desc">Latest indicator snapshot for one ticker from SQLite.</td><td><span class="tag">debug / direct</span></td></tr>
+        <tr><td><span class="method m-get">GET</span></td><td class="route-path">/api/indicators/{ticker}/history</td><td class="route-desc">Historical indicator snapshots (up to 1000, oldest-first). Used by TickerInsightCard to build RawPoint[] for the pattern engine and by TrendStructureTimeline for the 30-point swimlane.</td><td><span class="tag">TickerInsightCard</span> <span class="tag">TrendStructureTimeline</span></td></tr>
+        <tr><td><span class="method m-get">GET</span></td><td class="route-path">/api/predictions/{ticker}</td><td class="route-desc">Latest AI prediction row with confidence, rules_triggered JSON, notes.</td><td><span class="tag">debug / direct</span></td></tr>
+        <tr><td><span class="method m-get">GET</span></td><td class="route-path">/api/signals/{ticker}</td><td class="route-desc">Recent EMA/VWAP/S&R signal events for one ticker.</td><td><span class="tag">AlertsPanel</span></td></tr>
+        <tr><td><span class="method m-post">POST</span></td><td class="route-path">/api/ticker/{ticker}/refresh</td><td class="route-desc">On-demand full fetch + compute + broadcast for any symbol. Called immediately when user adds a new ticker to the watchlist.</td><td><span class="tag">App.handleAddTicker</span></td></tr>
+        <tr><td><span class="method m-get">GET</span></td><td class="route-path">/api/composite-alerts</td><td class="route-desc">Latest composite alerts from the composite_alerts table. Query params: <code style="font-size:0.72rem;background:var(--surface2);padding:1px 5px;border-radius:3px;">ticker</code>, <code style="font-size:0.72rem;background:var(--surface2);padding:1px 5px;border-radius:3px;">limit</code>. Returns tiered alerts (T1/T2/T3) sorted by timestamp desc.</td><td><span class="tag">AlertsPanel</span></td></tr>
+        <tr><td><span class="method m-post">POST</span></td><td class="route-path">/api/refresh-all</td><td class="route-desc">Triggers an on-demand fetch + compute cycle for all tracked tickers concurrently. Called by the manual ↻ Refresh button in AlertsPanel.</td><td><span class="tag">AlertsPanel</span></td></tr>
+        <tr><td><span class="method m-get">GET</span></td><td class="route-path">/api/push/vapid-key</td><td class="route-desc">Returns the VAPID public key for the browser to call <code style="font-size:0.72rem;background:var(--surface2);padding:1px 5px;border-radius:3px;">pushManager.subscribe()</code>. Returns 503 if push is not configured.</td><td><span class="tag">pushNotifications.ts</span></td></tr>
+        <tr><td><span class="method m-post">POST</span></td><td class="route-path">/api/push/subscribe</td><td class="route-desc">Saves a browser PushSubscription (endpoint + keys) to the push_subscriptions table. Upserts on duplicate endpoint.</td><td><span class="tag">pushNotifications.ts</span></td></tr>
+        <tr style="border-bottom:none"><td><span class="method m-del">DEL</span></td><td class="route-path">/api/push/subscribe</td><td class="route-desc">Removes a push subscription by endpoint. Called when user disables notifications or SW unsubscribes.</td><td><span class="tag">pushNotifications.ts</span></td></tr>
+        <tr><td><span class="method m-post">POST</span></td><td class="route-path">/api/indicators/{ticker}/tape-read</td><td class="route-desc">On-demand LLM Tape Read. Returns a 3-line senior-trader narrative covering tape environment, dominant setup, and next probable move. Uses cached result unless candle context snapshot meaningfully changed since last call.</td><td><span class="tag">TapeReadCard</span></td></tr>
+        <tr><td><span class="method m-get">GET</span></td><td class="route-path">/api/health</td><td class="route-desc">Health check. Returns <code style="font-size:0.72rem;background:var(--surface2);padding:1px 5px;border-radius:3px;">{"status":"ok"}</code></td><td><span class="tag">monitoring</span></td></tr>
+        <tr><td><span class="method m-ws">WS</span></td><td class="route-path">/ws</td><td class="route-desc">Persistent WebSocket. Pushes price_update, prediction, signal, and composite_alert messages. Client sends "ping" heartbeat every 20 s.</td><td><span class="tag">wsStore.connect()</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- DATABASE -->
+  <div class="section" id="db">
+    <div class="section-hdr">
+      <div class="section-label">Persistence</div>
+      <div class="section-title">SQLite schema — picker.db</div>
+      <div class="section-sub">All tables use (ticker, timestamp) as a natural compound key. aiosqlite provides async access from uvicorn's event loop.</div>
+    </div>
+    <div class="schema-grid">
+      <div class="schema-card">
+        <div class="schema-head"><span class="tbl-icon">📊</span>candles</div>
+        <div class="schema-body">
+          <div class="schema-row"><span class="col-name">id</span><span class="col-type">INTEGER</span><span class="pk">PK</span></div>
+          <div class="schema-row"><span class="col-name">ticker</span><span class="col-type">TEXT</span></div>
+          <div class="schema-row"><span class="col-name">timestamp</span><span class="col-type">TEXT</span></div>
+          <div class="schema-row"><span class="col-name">open / high / low / close</span><span class="col-type">REAL</span></div>
+          <div class="schema-row"><span class="col-name">volume</span><span class="col-type">REAL</span></div>
+          <div class="schema-row"><span class="col-name">session</span><span class="col-type">TEXT</span></div>
+          <div class="schema-row"><span class="col-name">timeframe</span><span class="col-type">TEXT</span></div>
+        </div>
+      </div>
+      <div class="schema-card">
+        <div class="schema-head"><span class="tbl-icon">📐</span>indicators</div>
+        <div class="schema-body">
+          <div class="schema-row"><span class="col-name">id</span><span class="col-type">INTEGER</span><span class="pk">PK</span></div>
+          <div class="schema-row"><span class="col-name">ticker / timestamp</span><span class="col-type">TEXT</span></div>
+          <div class="schema-row"><span class="col-name">ema9 / ema21 / ema_state</span><span class="col-type">REAL / TEXT</span></div>
+          <div class="schema-row"><span class="col-name">vwap / price_vs_vwap / vwap_motion</span><span class="col-type">REAL / TEXT</span></div>
+          <div class="schema-row"><span class="col-name">daily_trend / poc</span><span class="col-type">TEXT / REAL</span></div>
+          <div class="schema-row"><span class="col-name">orb_high / orb_low</span><span class="col-type">REAL</span></div>
+          <div class="schema-row"><span class="col-name">pm_high / pm_low</span><span class="col-type">REAL</span></div>
+          <div class="schema-row"><span class="col-name">prev_day_high / prev_day_low</span><span class="col-type">REAL</span></div>
+          <div class="schema-row"><span class="col-name">nearest_support / resistance</span><span class="col-type">REAL</span></div>
+          <div class="schema-row"><span class="col-name">swing_high / swing_low</span><span class="col-type">REAL</span></div>
+          <div class="schema-row"><span class="col-name">poc_pre / poc_regular / poc_after</span><span class="col-type">REAL</span></div>
+        </div>
+      </div>
+      <div class="schema-card">
+        <div class="schema-head"><span class="tbl-icon">🤖</span>predictions</div>
+        <div class="schema-body">
+          <div class="schema-row"><span class="col-name">id</span><span class="col-type">INTEGER</span><span class="pk">PK</span></div>
+          <div class="schema-row"><span class="col-name">ticker / timestamp</span><span class="col-type">TEXT</span></div>
+          <div class="schema-row"><span class="col-name">prediction</span><span class="col-type">TEXT (UP/DOWN…)</span></div>
+          <div class="schema-row"><span class="col-name">confidence</span><span class="col-type">REAL 0–1</span></div>
+          <div class="schema-row"><span class="col-name">rules_triggered</span><span class="col-type">TEXT (JSON array)</span></div>
+          <div class="schema-row"><span class="col-name">notes</span><span class="col-type">TEXT</span></div>
+          <div class="schema-row"><span class="col-name">outcome</span><span class="col-type">TEXT (resolved later)</span></div>
+        </div>
+      </div>
+      <div class="schema-card">
+        <div class="schema-head"><span class="tbl-icon">⚡</span>signals</div>
+        <div class="schema-body">
+          <div class="schema-row"><span class="col-name">id</span><span class="col-type">INTEGER</span><span class="pk">PK</span></div>
+          <div class="schema-row"><span class="col-name">ticker / timestamp</span><span class="col-type">TEXT</span></div>
+          <div class="schema-row"><span class="col-name">signal_type</span><span class="col-type">TEXT</span></div>
+          <div class="schema-row"><span class="col-name">direction</span><span class="col-type">TEXT (UP/DOWN)</span></div>
+          <div class="schema-row"><span class="col-name">details</span><span class="col-type">TEXT (JSON)</span></div>
+        </div>
+      </div>
+      <div class="schema-card">
+        <div class="schema-head"><span class="tbl-icon">&#128680;</span>composite_alerts</div>
+        <div class="schema-body">
+          <div class="schema-row"><span class="col-name">id</span><span class="col-type">INTEGER</span><span class="pk">PK</span></div>
+          <div class="schema-row"><span class="col-name">ticker / timestamp</span><span class="col-type">TEXT</span></div>
+          <div class="schema-row"><span class="col-name">signal</span><span class="col-type">TEXT (POWER_TREND&hellip;)</span></div>
+          <div class="schema-row"><span class="col-name">tier</span><span class="col-type">INTEGER (1/2/3)</span></div>
+          <div class="schema-row"><span class="col-name">direction</span><span class="col-type">TEXT (UP/DOWN)</span></div>
+          <div class="schema-row"><span class="col-name">confidence</span><span class="col-type">REAL 0&ndash;1</span></div>
+          <div class="schema-row"><span class="col-name">current_price</span><span class="col-type">REAL</span></div>
+          <div class="schema-row"><span class="col-name">details</span><span class="col-type">TEXT (JSON)</span></div>
+          <div class="schema-row"><span class="col-name">timeframe</span><span class="col-type">TEXT (&quot;5m&quot;)</span></div>
+        </div>
+      </div>
+      <div class="schema-card">
+        <div class="schema-head"><span class="tbl-icon">&#128276;</span>push_subscriptions</div>
+        <div class="schema-body">
+          <div class="schema-row"><span class="col-name">id</span><span class="col-type">INTEGER</span><span class="pk">PK</span></div>
+          <div class="schema-row"><span class="col-name">endpoint</span><span class="col-type">TEXT UNIQUE</span></div>
+          <div class="schema-row"><span class="col-name">p256dh</span><span class="col-type">TEXT (DH public key)</span></div>
+          <div class="schema-row"><span class="col-name">auth</span><span class="col-type">TEXT (auth secret)</span></div>
+          <div class="schema-row"><span class="col-name">tickers</span><span class="col-type">TEXT (JSON array | NULL)</span></div>
+          <div class="schema-row"><span class="col-name">created_at</span><span class="col-type">TEXT ISO-8601</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- INDICATORS -->
+  <div class="section" id="indicators">
+    <div class="section-hdr">
+      <div class="section-label">Indicator Modules</div>
+      <div class="section-title">indicators/ — 10 computation modules</div>
+      <div class="section-sub">Each module receives the full pandas DataFrame and returns a flat dict merged into the snapshot.</div>
+    </div>
+    <div class="ind-grid">
+      <div class="ind-card">
+        <div class="ind-name">EMA Crossover</div>
+        <div class="ind-file">indicators/ema.py</div>
+        <div class="ind-desc">Computes EMA-9 and EMA-21 over close prices. Determines BULLISH/BEARISH state and records cross timestamp.</div>
+        <div class="ind-output"><span class="out-tag">ema9</span><span class="out-tag">ema21</span><span class="out-tag">ema_state</span><span class="out-tag">ema_cross_ts</span></div>
+      </div>
+      <div class="ind-card">
+        <div class="ind-name">VWAP</div>
+        <div class="ind-file">indicators/vwap.py</div>
+        <div class="ind-desc">Intraday VWAP anchored to session open. Tracks position (ABOVE/BELOW), distance %, and slope-based motion (TOWARD/AWAY/FLAT).</div>
+        <div class="ind-output"><span class="out-tag">vwap</span><span class="out-tag">price_vs_vwap</span><span class="out-tag">vwap_distance_pct</span><span class="out-tag">vwap_motion</span><span class="out-tag">vwap_slope</span></div>
+      </div>
+      <div class="ind-card">
+        <div class="ind-name">Daily Trend</div>
+        <div class="ind-file">indicators/trend.py</div>
+        <div class="ind-desc">Multi-day price structure: compares current close vs prior-day range to determine BULL / BEAR / NEUTRAL macro bias.</div>
+        <div class="ind-output"><span class="out-tag">daily_trend</span></div>
+      </div>
+      <div class="ind-card">
+        <div class="ind-name">Volume Profile / POC</div>
+        <div class="ind-file">indicators/volume_profile.py</div>
+        <div class="ind-desc">Builds intraday price histogram weighted by volume. Extracts Point of Control (POC) — the price level with highest traded volume.</div>
+        <div class="ind-output"><span class="out-tag">poc</span></div>
+      </div>
+      <div class="ind-card">
+        <div class="ind-name">Session Levels</div>
+        <div class="ind-file">indicators/session_levels.py</div>
+        <div class="ind-desc">Splits DataFrame by session label (pre/regular/after/prev_day). Extracts H/L/POC for each. ORB uses first 15-min regular session bars.</div>
+        <div class="ind-output"><span class="out-tag">pm_high/low</span><span class="out-tag">orb_high/low</span><span class="out-tag">prev_day_h/l</span><span class="out-tag">poc_pre/reg/ah</span></div>
+      </div>
+      <div class="ind-card">
+        <div class="ind-name">Support &amp; Resistance</div>
+        <div class="ind-file">indicators/support_resistance.py</div>
+        <div class="ind-desc">Identifies nearest support and resistance levels from recent swing points and volume clusters relative to current price.</div>
+        <div class="ind-output"><span class="out-tag">nearest_support</span><span class="out-tag">nearest_resistance</span></div>
+      </div>
+      <div class="ind-card">
+        <div class="ind-name">Swing Points</div>
+        <div class="ind-file">indicators/swings.py</div>
+        <div class="ind-desc">Detects most recent swing high and swing low using local price extrema. Timestamps included. Rendered as ▲/▼ markers on chart.</div>
+        <div class="ind-output"><span class="out-tag">swing_high</span><span class="out-tag">swing_high_ts</span><span class="out-tag">swing_low</span><span class="out-tag">swing_low_ts</span></div>
+      </div>
+      <div class="ind-card">
+        <div class="ind-name">RSI-14</div>
+        <div class="ind-file">indicators/rsi.py</div>
+        <div class="ind-desc">Wilder's RSI computed over the last 14 bars. Classifies as OVERBOUGHT (&gt;70), OVERSOLD (&lt;30), or NEUTRAL. Used directly by 2 evaluator rules and as signal 6 of the confluence scorer.</div>
+        <div class="ind-output"><span class="out-tag">rsi_14</span><span class="out-tag">rsi_state</span></div>
+      </div>
+      <div class="ind-card">
+        <div class="ind-name">Confluence Score</div>
+        <div class="ind-file">indicators/confluence.py</div>
+        <div class="ind-desc">Synthesises 9 independent indicator signals into a bull/bear alignment score. A bull_score ≥ 6 or bear_score ≥ 6 triggers the two highest-weighted rules in the evaluator (weight 1.8 each).</div>
+        <div class="ind-output"><span class="out-tag">bull_score</span><span class="out-tag">bear_score</span><span class="out-tag">confluence_bias</span></div>
+      </div>
+      <div class="ind-card">
+        <div class="ind-name">Candle Context</div>
+        <div class="ind-file">indicators/candle_context.py</div>
+        <div class="ind-desc">Analyses the last 30-min window (6 × 5-min bars) for candlestick patterns (Engulfing, Hammer, Doji, InsideBar, NR7, wicks), price structure (UPTREND/DOWNTREND/COILING/CHOPPY), volume character, close position, and key-level proximity. Powers the TapeReadCard panel and on-demand LLM narrative.</div>
+        <div class="ind-output"><span class="out-tag">candle_structure</span><span class="out-tag">candle_patterns</span><span class="out-tag">candle_vol_char</span><span class="out-tag">candle_near_level</span><span class="out-tag">candle_pace</span><span class="out-tag">candle_close_pos</span><span class="out-tag">candle_atr14</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI ENGINE -->
+  <div class="section" id="ai">
+    <div class="section-hdr">
+      <div class="section-label">AI Evaluation Engine</div>
+      <div class="section-title">Rule-based evaluator — ai/evaluator.py</div>
+      <div class="section-sub">Deterministic weighted-vote system backed by optional LLM commentary. Every rule that fires is named, weighted, and explained in the UI. v3 adds RSI momentum, EMA cross-imminence, and a confluence synthesiser (9-signal alignment score).</div>
+    </div>
+    <div class="ai-flow">
+      <div class="ai-step">
+        <div class="ai-step-num">1</div>
+        <div class="ai-step-body"><h4>Receive snapshot dict</h4><p>run_evaluation(ticker, df, current_price, snapshot) called after indicators are computed. snapshot contains all 30+ fields from the indicators modules.</p></div>
+      </div>
+      <div class="ai-step">
+        <div class="ai-step-num">2</div>
+        <div class="ai-step-body"><h4>Evaluate each rule</h4><p>Each of the 33 rules tests one condition on the snapshot. Returns <code>True</code> if triggered, <code>False</code> otherwise. Rules have a direction (UP or DOWN) and a float weight.</p></div>
+      </div>
+      <div class="ai-step">
+        <div class="ai-step-num">3</div>
+        <div class="ai-step-body"><h4>Sum weighted votes</h4><p>UP-triggered rules contribute <code>+weight</code> to score; DOWN rules contribute <code>-weight</code>. Final score determines direction. <code>confidence = |score| / total_possible_weight</code>.</p></div>
+      </div>
+      <div class="ai-step">
+        <div class="ai-step-num">4</div>
+        <div class="ai-step-body"><h4>LLM Commentary (optional)</h4><p>If <code>LLM_PROVIDER</code> is set, <code>ai/llm_commentary.py</code> calls Gemini Flash / GPT-4o-mini / Claude Haiku / Ollama to generate a 2-sentence plain-English rationale. Rate-limited to 1 call per 2.2 s. Only fires when prediction direction or confidence shifts ≥10% — typically 2–5 calls/hour. Result stored in <code>notes</code> field.</p></div>
+      </div>
+      <div class="ai-step">
+        <div class="ai-step-num">5</div>
+        <div class="ai-step-body"><h4>Emit PredictionRow</h4><p>Stores <code>prediction</code> (UP/DOWN/NEUTRAL), <code>confidence</code> (0–1), <code>rules_triggered</code> as JSON array, and optional <code>notes</code> (LLM commentary) into the predictions table.</p></div>
+      </div>
+      <div class="ai-step">
+        <div class="ai-step-num">6</div>
+        <div class="ai-step-body"><h4>Outcome resolution</h4><p>resolve_outcomes() runs post-cycle. For predictions older than 30 min, checks if the price moved in the predicted direction and marks outcome as WIN/LOSS in the DB. Feeds future ML retrain.</p></div>
+      </div>
+    </div>
+
+    <div style="margin-top:28px;">
+      <div style="font-size:0.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px;">Rule library (33 rules)</div>
+      <table class="rule-table">
+        <thead><tr><th>#</th><th>Rule ID</th><th>Dir</th><th>Weight</th><th>Trigger condition</th><th>Category</th></tr></thead>
+        <tbody>
+          <!-- Trend -->
+          <tr style="background:rgba(255,255,255,0.02)"><td colspan="6" style="font-size:0.62rem;font-weight:700;color:var(--muted);letter-spacing:0.08em;padding:6px 12px 4px;">TREND</td></tr>
+          <tr><td style="color:var(--muted);font-size:0.7rem">1</td><td class="rule-id">ema_bullish</td><td class="dir-up">↑ UP</td><td><span class="weight-badge">1.5</span></td><td class="route-desc">ema_state == 'BULLISH' (ema9 &gt; ema21)</td><td><span class="tag">Trend</span></td></tr>
+          <tr><td style="color:var(--muted);font-size:0.7rem">2</td><td class="rule-id">ema_bearish</td><td class="dir-dn">↓ DN</td><td><span class="weight-badge">1.5</span></td><td class="route-desc">ema_state == 'BEARISH' (ema9 &lt; ema21)</td><td><span class="tag">Trend</span></td></tr>
+          <tr><td style="color:var(--muted);font-size:0.7rem">3</td><td class="rule-id">ema_stack_bullish</td><td class="dir-up">↑ UP</td><td><span class="weight-badge">1.2</span></td><td class="route-desc">ema9 &gt; ema21 &gt; ema50 — full bull stack</td><td><span class="tag">Trend</span></td></tr>
+          <tr><td style="color:var(--muted);font-size:0.7rem">4</td><td class="rule-id">ema_stack_bearish</td><td class="dir-dn">↓ DN</td><td><span class="weight-badge">1.2</span></td><td class="route-desc">ema9 &lt; ema21 &lt; ema50 — full bear stack</td><td><span class="tag">Trend</span></td></tr>
+          <tr><td style="color:var(--muted);font-size:0.7rem">5</td><td class="rule-id">daily_trend_bull</td><td class="dir-up">↑ UP</td><td><span class="weight-badge">1.2</span></td><td class="route-desc">daily_trend == 'BULL'</td><td><span class="tag">Trend</span></td></tr>
+          <tr><td style="color:var(--muted);font-size:0.7rem">6</td><td class="rule-id">daily_trend_bear</td><td class="dir-dn">↓ DN</td><td><span class="weight-badge">1.2</span></td><td class="route-desc">daily_trend == 'BEAR'</td><td><span class="tag">Trend</span></td></tr>
+          <!-- VWAP -->
+          <tr style="background:rgba(255,255,255,0.02)"><td colspan="6" style="font-size:0.62rem;font-weight:700;color:var(--muted);letter-spacing:0.08em;padding:6px 12px 4px;">VWAP</td></tr>
+          <tr><td style="color:var(--muted);font-size:0.7rem">7</td><td class="rule-id">price_above_vwap</td><td class="dir-up">↑ UP</td><td><span class="weight-badge">1.0</span></td><td class="route-desc">price_vs_vwap == 'ABOVE'</td><td><span class="tag">VWAP</span></td></tr>
+          <tr><td style="color:var(--muted);font-size:0.7rem">8</td><td class="rule-id">price_below_vwap</td><td class="dir-dn">↓ DN</td><td><span class="weight-badge">1.0</span></td><td class="route-desc">price_vs_vwap == 'BELOW'</td><td><span class="tag">VWAP</span></td></tr>
+          <tr><td style="color:var(--muted);font-size:0.7rem">9</td><td class="rule-id">vwap_moving_away_above</td><td class="dir-up">↑ UP</td><td><span class="weight-badge">1.0</span></td><td class="route-desc">ABOVE VWAP + motion == 'AWAY' (diverging bullish)</td><td><span class="tag">VWAP</span></td></tr>
+          <tr><td style="color:var(--muted);font-size:0.7rem">10</td><td class="rule-id">vwap_moving_away_below</td><td class="dir-dn">↓ DN</td><td><span class="weight-badge">1.0</span></td><td class="route-desc">BELOW VWAP + motion == 'AWAY' (diverging bearish)</td><td><span class="tag">VWAP</span></td></tr>
+          <tr><td style="color:var(--muted);font-size:0.7rem">11</td><td class="rule-id">vwap_converging_from_above</td><td class="dir-dn">↓ DN</td><td><span class="weight-badge">1.0</span></td><td class="route-desc">ABOVE VWAP + motion == 'TOWARD' (mean-reverting)</td><td><span class="tag">VWAP</span></td></tr>
+          <tr><td style="color:var(--muted);font-size:0.7rem">12</td><td class="rule-id">vwap_converging_from_below</td><td class="dir-up">↑ UP</td><td><span class="weight-badge">1.0</span></td><td class="route-desc">BELOW VWAP + motion == 'TOWARD' (mean-reverting)</td><td><span class="tag">VWAP</span></td></tr>
+          <tr><td style="color:var(--muted);font-size:0.7rem">13</td><td class="rule-id">vwap_reclaim_bullish</td><td class="dir-up">↑ UP</td><td><span class="weight-badge">1.3</span></td><td class="route-desc">prev_bar below VWAP, curr_bar closes above VWAP</td><td><span class="tag">VWAP</span></td></tr>
+          <tr><td style="color:var(--muted);font-size:0.7rem">14</td><td class="rule-id">vwap_lose_bearish</td><td class="dir-dn">↓ DN</td><td><span class="weight-badge">1.3</span></td><td class="route-desc">prev_bar above VWAP, curr_bar closes below VWAP</td><td><span class="tag">VWAP</span></td></tr>
+          <!-- S/R -->
+          <tr style="background:rgba(255,255,255,0.02)"><td colspan="6" style="font-size:0.62rem;font-weight:700;color:var(--muted);letter-spacing:0.08em;padding:6px 12px 4px;">S/R &amp; POC</td></tr>
+          <tr><td style="color:var(--muted);font-size:0.7rem">15</td><td class="rule-id">price_above_poc</td><td class="dir-up">↑ UP</td><td><span class="weight-badge">1.0</span></td><td class="route-desc">price &gt; volume POC</td><td><span class="tag">S/R</span></td></tr>
+          <tr><td style="color:var(--muted);font-size:0.7rem">16</td><td class="rule-id">price_below_poc</td><td class="dir-dn">↓ DN</td><td><span class="weight-badge">1.0</span></td><td class="route-desc">price &lt; volume POC</td><td><span class="tag">S/R</span></td></tr>
+          <tr><td style="color:var(--muted);font-size:0.7rem">17</td><td class="rule-id">price_near_support</td><td class="dir-up">↑ UP</td><td><span class="weight-badge">1.0</span></td><td class="route-desc">price within 0.3% above nearest_support</td><td><span class="tag">S/R</span></td></tr>
+          <tr><td style="color:var(--muted);font-size:0.7rem">18</td><td class="rule-id">price_near_resistance</td><td class="dir-dn">↓ DN</td><td><span class="weight-badge">1.0</span></td><td class="route-desc">price within 0.3% below nearest_resistance</td><td><span class="tag">S/R</span></td></tr>
+          <tr><td style="color:var(--muted);font-size:0.7rem">19</td><td class="rule-id">sr_support_bounce</td><td class="dir-up">↑ UP</td><td><span class="weight-badge">0.8</span></td><td class="route-desc">price ≤ 0.2% above nearest_support + momentum ↑</td><td><span class="tag">S/R</span></td></tr>
+          <!-- Volume -->
+          <tr style="background:rgba(255,255,255,0.02)"><td colspan="6" style="font-size:0.62rem;font-weight:700;color:var(--muted);letter-spacing:0.08em;padding:6px 12px 4px;">VOLUME</td></tr>
+          <tr><td style="color:var(--muted);font-size:0.7rem">20</td><td class="rule-id">volume_surge_up</td><td class="dir-up">↑ UP</td><td><span class="weight-badge">1.1</span></td><td class="route-desc">volume &gt; 1.5× avg_volume AND price_change &gt; 0</td><td><span class="tag">Volume</span></td></tr>
+          <tr><td style="color:var(--muted);font-size:0.7rem">21</td><td class="rule-id">volume_surge_down</td><td class="dir-dn">↓ DN</td><td><span class="weight-badge">1.1</span></td><td class="route-desc">volume &gt; 1.5× avg_volume AND price_change &lt; 0</td><td><span class="tag">Volume</span></td></tr>
+          <tr><td style="color:var(--muted);font-size:0.7rem">22</td><td class="rule-id">volume_dry_up</td><td style="color:#60a5fa;font-size:0.72rem;font-weight:600">↕ BOTH</td><td><span class="weight-badge">0.6</span></td><td class="route-desc">volume &lt; 0.5× avg during counter-trend bar — main trend likely resumes</td><td><span class="tag">Volume</span></td></tr>
+          <!-- Momentum -->
+          <tr style="background:rgba(255,255,255,0.02)"><td colspan="6" style="font-size:0.62rem;font-weight:700;color:var(--muted);letter-spacing:0.08em;padding:6px 12px 4px;">MOMENTUM</td></tr>
+          <tr><td style="color:var(--muted);font-size:0.7rem">23</td><td class="rule-id">positive_momentum</td><td class="dir-up">↑ UP</td><td><span class="weight-badge">1.0</span></td><td class="route-desc">recent_return_5m &gt; +0.3%</td><td><span class="tag">Momentum</span></td></tr>
+          <tr><td style="color:var(--muted);font-size:0.7rem">24</td><td class="rule-id">negative_momentum</td><td class="dir-dn">↓ DN</td><td><span class="weight-badge">1.0</span></td><td class="route-desc">recent_return_5m &lt; -0.3%</td><td><span class="tag">Momentum</span></td></tr>
+          <!-- Candle Structure -->
+          <tr style="background:rgba(255,255,255,0.02)"><td colspan="6" style="font-size:0.62rem;font-weight:700;color:var(--muted);letter-spacing:0.08em;padding:6px 12px 4px;">CANDLE STRUCTURE</td></tr>
+          <tr><td style="color:var(--muted);font-size:0.7rem">25</td><td class="rule-id">higher_low_formed</td><td class="dir-up">↑ UP</td><td><span class="weight-badge">0.9</span></td><td class="route-desc">curr_bar_low &gt; prev_bar_low on a pullback bar (recent_return &lt; 0)</td><td><span class="tag">Structure</span></td></tr>
+          <tr><td style="color:var(--muted);font-size:0.7rem">26</td><td class="rule-id">lower_high_formed</td><td class="dir-dn">↓ DN</td><td><span class="weight-badge">0.9</span></td><td class="route-desc">curr_bar_high &lt; prev_bar_high on a bounce bar (recent_return &gt; 0)</td><td><span class="tag">Structure</span></td></tr>
+          <!-- ORB -->
+          <tr style="background:rgba(255,255,255,0.02)"><td colspan="6" style="font-size:0.62rem;font-weight:700;color:var(--muted);letter-spacing:0.08em;padding:6px 12px 4px;">ORB</td></tr>
+          <tr><td style="color:var(--muted);font-size:0.7rem">27</td><td class="rule-id">opening_range_hold</td><td class="dir-up">↑ UP</td><td><span class="weight-badge">0.7</span></td><td class="route-desc">price pulls back to orb_high and holds (within 0.2% above it)</td><td><span class="tag">ORB</span></td></tr>
+          <!-- RSI -->
+          <tr style="background:rgba(255,255,255,0.02)"><td colspan="6" style="font-size:0.62rem;font-weight:700;color:var(--muted);letter-spacing:0.08em;padding:6px 12px 4px;">RSI</td></tr>
+          <tr><td style="color:var(--muted);font-size:0.7rem">28</td><td class="rule-id">rsi_overbought</td><td class="dir-dn">↓ DN</td><td><span class="weight-badge">0.9</span></td><td class="route-desc">rsi_14 &gt; 70 — extended, mean-reversion risk</td><td><span class="tag">RSI</span></td></tr>
+          <tr><td style="color:var(--muted);font-size:0.7rem">29</td><td class="rule-id">rsi_oversold</td><td class="dir-up">↑ UP</td><td><span class="weight-badge">0.9</span></td><td class="route-desc">rsi_14 &lt; 30 — deeply oversold, bounce risk</td><td><span class="tag">RSI</span></td></tr>
+          <!-- EMA Cross -->
+          <tr style="background:rgba(255,255,255,0.02)"><td colspan="6" style="font-size:0.62rem;font-weight:700;color:var(--muted);letter-spacing:0.08em;padding:6px 12px 4px;">EMA CROSS</td></tr>
+          <tr><td style="color:var(--muted);font-size:0.7rem">30</td><td class="rule-id">ema_cross_imminent_bull</td><td class="dir-up">↑ UP</td><td><span class="weight-badge">0.8</span></td><td class="route-desc">ema_state BEARISH but |ema_spread_pct| &lt; 0.08% — bullish cross imminent</td><td><span class="tag">EMA</span></td></tr>
+          <tr><td style="color:var(--muted);font-size:0.7rem">31</td><td class="rule-id">ema_cross_imminent_bear</td><td class="dir-dn">↓ DN</td><td><span class="weight-badge">0.8</span></td><td class="route-desc">ema_state BULLISH but |ema_spread_pct| &lt; 0.08% — bearish cross imminent</td><td><span class="tag">EMA</span></td></tr>
+          <!-- Confluence -->
+          <tr style="background:rgba(255,255,255,0.02)"><td colspan="6" style="font-size:0.62rem;font-weight:700;color:var(--muted);letter-spacing:0.08em;padding:6px 12px 4px;">CONFLUENCE</td></tr>
+          <tr><td style="color:var(--muted);font-size:0.7rem">32</td><td class="rule-id">confluence_strong_bull</td><td class="dir-up">↑ UP</td><td><span class="weight-badge" style="background:rgba(38,166,154,0.25);color:#26a69a">1.8</span></td><td class="route-desc">bull_score ≥ 6 — 6+ independent indicators aligned bullish simultaneously</td><td><span class="tag">Confluence</span></td></tr>
+          <tr><td style="color:var(--muted);font-size:0.7rem">33</td><td class="rule-id">confluence_strong_bear</td><td class="dir-dn">↓ DN</td><td><span class="weight-badge" style="background:rgba(239,83,80,0.25);color:#ef5350">1.8</span></td><td class="route-desc">bear_score ≥ 6 — 6+ independent indicators aligned bearish simultaneously</td><td><span class="tag">Confluence</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- LLM COMMENTARY -->
+  <div class="section" id="llm">
+    <div class="section-hdr">
+      <div class="section-label">LLM Commentary</div>
+      <div class="section-title">Plain-English trade rationale — ai/llm_commentary.py</div>
+      <div class="section-sub">Optional layer that calls an LLM after each rule-engine evaluation to produce a 2-sentence intraday rationale. Disabled by default; enabled by setting <code>LLM_PROVIDER</code> env var.</div>
+    </div>
+    <div class="ai-flow">
+      <div class="ai-step">
+        <div class="ai-step-num">1</div>
+        <div class="ai-step-body"><h4>Change detection</h4><p>Compares new prediction to the last emitted prediction for the same ticker. Skips the LLM call unless direction flipped (UP↔DOWN/NEUTRAL) or confidence shifted ≥10 pp. Keeps calls to ~2–5/hour across 10 tickers.</p></div>
+      </div>
+      <div class="ai-step">
+        <div class="ai-step-num">2</div>
+        <div class="ai-step-body"><h4>Rate limiter</h4><p>Global <code>asyncio.Lock</code> enforces ≥2.2 s between any two LLM calls regardless of ticker. Prevents burst rate-limit errors on free-tier API keys (Gemini free = 30 RPM).</p></div>
+      </div>
+      <div class="ai-step">
+        <div class="ai-step-num">3</div>
+        <div class="ai-step-body"><h4>Provider dispatch</h4><p>Switches on <code>LLM_PROVIDER</code> env var to one of four async call helpers:</p>
+          <table class="rule-table" style="margin-top:10px">
+            <thead><tr><th>Provider</th><th>Env var value</th><th>Default model</th><th>Base URL</th></tr></thead>
+            <tbody>
+              <tr><td>Google Gemini</td><td class="rule-id">gemini</td><td class="route-desc">gemini-2.0-flash-lite</td><td class="route-desc">generativelanguage.googleapis.com</td></tr>
+              <tr><td>OpenAI</td><td class="rule-id">openai</td><td class="route-desc">gpt-4o-mini</td><td class="route-desc">api.openai.com</td></tr>
+              <tr><td>Anthropic</td><td class="rule-id">anthropic</td><td class="route-desc">claude-haiku-4-5</td><td class="route-desc">api.anthropic.com</td></tr>
+              <tr><td>Ollama (local)</td><td class="rule-id">ollama</td><td class="route-desc">llama3.1</td><td class="route-desc">localhost:11434 (configurable)</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="ai-step">
+        <div class="ai-step-num">4</div>
+        <div class="ai-step-body"><h4>Silent fail</h4><p>Any error (network, auth, quota) is caught, logged as a warning, and returns <code>None</code>. The prediction is still persisted and broadcast; only the <code>notes</code> field is absent. No user-visible crash.</p></div>
+      </div>
+      <div class="ai-step">
+        <div class="ai-step-num">5</div>
+        <div class="ai-step-body"><h4>UI display</h4><p>When <code>pred.notes</code> is non-null, TickerDetail renders a purple <strong>🤖 AI COMMENTARY</strong> block above the triggered-rules list. Commentary is plain prose summarising direction, confidence, and key signals.</p></div>
+      </div>
+    </div>
+    <div style="margin-top:20px;background:rgba(129,140,248,0.08);border:1px solid rgba(129,140,248,0.2);border-radius:10px;padding:16px 20px;font-size:0.78rem;line-height:1.7;">
+      <div style="font-weight:700;color:#a5b4fc;margin-bottom:8px;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;">Environment variables (start-backend.ps1)</div>
+      <div><code style="color:#818cf8">$env:LLM_PROVIDER</code> — <span style="color:var(--muted)">gemini | openai | anthropic | ollama | disabled (default)</span></div>
+      <div><code style="color:#818cf8">$env:LLM_API_KEY</code> &nbsp;— <span style="color:var(--muted)">API key for the chosen cloud provider (not needed for ollama)</span></div>
+      <div><code style="color:#818cf8">$env:LLM_MODEL</code> &nbsp;&nbsp;&nbsp;— <span style="color:var(--muted)">Override default model name (optional)</span></div>
+      <div><code style="color:#818cf8">$env:OLLAMA_BASE_URL</code> — <span style="color:var(--muted)">Ollama server URL (default: http://localhost:11434)</span></div>
+    </div>
+  </div>
+
+  <!-- WEBSOCKET -->
+  <div class="section" id="websocket">
+    <div class="section-hdr">
+      <div class="section-label">Real-Time Transport</div>
+      <div class="section-title">WebSocket message protocol</div>
+      <div class="section-sub">Four message types. All payloads are JSON. Frontend merges each type into Zustand state without replacing unrelated fields.</div>
+    </div>
+    <div class="msg-grid">
+      <div class="msg-card">
+        <div class="msg-type mt-price">price_update</div>
+        <div class="msg-field"><span class="mf-key">type</span><span class="mf-val">"price_update"</span></div>
+        <div class="msg-field"><span class="mf-key">ticker</span><span class="mf-val">"SPY"</span></div>
+        <div class="msg-field"><span class="mf-key">price</span><span class="mf-val">743.74</span></div>
+        <div class="msg-field"><span class="mf-key">session</span><span class="mf-val">"regular"</span></div>
+        <div class="msg-field"><span class="mf-key">ema_state</span><span class="mf-val">"BEARISH"</span></div>
+        <div class="msg-field"><span class="mf-key">price_vs_vwap</span><span class="mf-val">"BELOW"</span></div>
+        <div class="msg-field"><span class="mf-key">vwap_motion</span><span class="mf-val">"AWAY"</span></div>
+        <div class="msg-field"><span class="mf-key">daily_trend</span><span class="mf-val">"NEUTRAL"</span></div>
+        <div style="margin-top:8px;font-size:0.7rem;color:var(--muted)">Merged (not replaced) into existing indicators snapshot to preserve full fields (ema9, vwap value, session levels, etc.)</div>
+      </div>
+      <div class="msg-card">
+        <div class="msg-type mt-pred">prediction</div>
+        <div class="msg-field"><span class="mf-key">type</span><span class="mf-val">"prediction"</span></div>
+        <div class="msg-field"><span class="mf-key">ticker</span><span class="mf-val">"SPY"</span></div>
+        <div class="msg-field"><span class="mf-key">timestamp</span><span class="mf-val">"2026-05-22T…Z"</span></div>
+        <div class="msg-field"><span class="mf-key">prediction</span><span class="mf-val">"DOWN"</span></div>
+        <div class="msg-field"><span class="mf-key">confidence</span><span class="mf-val">0.71</span></div>
+        <div class="msg-field"><span class="mf-key">rules_triggered</span><span class="mf-val">["ema_bearish","price_below_vwap",…]</span></div>
+        <div class="msg-field"><span class="mf-key">notes</span><span class="mf-val">"SPY trading below VWAP with bearish EMA stack…" <span style="color:var(--muted);font-size:0.65rem">(LLM commentary or null)</span></span></div>
+        <div style="margin-top:8px;font-size:0.7rem;color:var(--muted)">Calls setPrediction(). LLM notes (when present) render as a purple 🤖 AI COMMENTARY block above the signal list in TickerDetail.</div>
+      </div>
+      <div class="msg-card">
+        <div class="msg-type mt-sig">signal</div>
+        <div class="msg-field"><span class="mf-key">type</span><span class="mf-val">"signal"</span></div>
+        <div class="msg-field"><span class="mf-key">ticker</span><span class="mf-val">"NVDA"</span></div>
+        <div class="msg-field"><span class="mf-key">timestamp</span><span class="mf-val">"2026-05-22T…Z"</span></div>
+        <div class="msg-field"><span class="mf-key">signal_type</span><span class="mf-val">"ema_crossover"</span></div>
+        <div class="msg-field"><span class="mf-key">direction</span><span class="mf-val">"DOWN"</span></div>
+        <div class="msg-field"><span class="mf-key">details</span><span class="mf-val">{…}</span></div>
+        <div style="margin-top:8px;font-size:0.7rem;color:var(--muted)">Emitted when a low-level signal state changes (e.g. EMA crossover, VWAP break, S/R break). Calls addSignal() in marketStore. Distinct from composite_alert messages.</div>
+      </div>
+      <div class="msg-card">
+        <div class="msg-type mt-alert">composite_alert</div>
+        <div class="msg-field"><span class="mf-key">type</span><span class="mf-val">"composite_alert"</span></div>
+        <div class="msg-field"><span class="mf-key">ticker</span><span class="mf-val">"SPY"</span></div>
+        <div class="msg-field"><span class="mf-key">signal</span><span class="mf-val">"POWER_TREND"</span></div>
+        <div class="msg-field"><span class="mf-key">tier</span><span class="mf-val">1</span></div>
+        <div class="msg-field"><span class="mf-key">direction</span><span class="mf-val">"DOWN"</span></div>
+        <div class="msg-field"><span class="mf-key">confidence</span><span class="mf-val">0.82</span></div>
+        <div class="msg-field"><span class="mf-key">current_price</span><span class="mf-val">743.74</span></div>
+        <div class="msg-field"><span class="mf-key">details</span><span class="mf-val">{…}</span></div>
+        <div style="margin-top:8px;font-size:0.7rem;color:var(--muted)">Deduped within 5 min per ticker+signal. AlertsPanel groups alerts by refresh cycle (batch display) with T1/T2/T3 tier filters and a manual ↻ Refresh button (POST /api/refresh-all).</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAPE READ -->
+  <div class="section" id="tapread">
+    <div class="section-hdr">
+      <div class="section-label">Tape Read</div>
+      <div class="section-title">LLM senior-trader narrative — ai/tape_read.py</div>
+      <div class="section-sub">On-demand layer that synthesises the full candle context snapshot into a 3-line senior-trader read. Triggered by the <strong>Generate</strong> button in the TapeReadCard panel. Shares the same provider config and rate-limiter as <code>llm_commentary.py</code>.</div>
+    </div>
+    <div class="ai-flow">
+      <div class="ai-step">
+        <div class="ai-step-num">1</div>
+        <div class="ai-step-body"><h4>Candle context snapshot</h4><p>Receives the fully-enriched indicator snapshot including all <code>candle_*</code> fields computed by <code>indicators/candle_context.py</code>: structure, patterns, volume character, close position, near-level tag, HH/HL, body trend, ATR-14.</p></div>
+      </div>
+      <div class="ai-step">
+        <div class="ai-step-num">2</div>
+        <div class="ai-step-body"><h4>Change detection (hash-based cache)</h4><p>Hashes a 15-key "context slice" (structure, patterns, vol_char, ema_state, price_vs_vwap, rsi, scores, etc.). Returns the cached narrative if the hash is unchanged — no LLM call, no latency.</p></div>
+      </div>
+      <div class="ai-step">
+        <div class="ai-step-num">3</div>
+        <div class="ai-step-body"><h4>3-line narrative format</h4><p>The LLM is instructed to respond with exactly 3 lines:<br>
+        <strong>LINE 1</strong> Tape environment (≤5 words, e.g. "Bearish breakdown below VWAP")<br>
+        <strong>LINE 2</strong> Dominant setup or risk with specific levels (≤2 sentences)<br>
+        <strong>LINE 3</strong> Next probable move + confirm/invalidate level (≤2 sentences)</p></div>
+      </div>
+      <div class="ai-step">
+        <div class="ai-step-num">4</div>
+        <div class="ai-step-body"><h4>Shared rate limiter + silent fail</h4><p>Reuses the same <code>asyncio.Lock</code> as <code>llm_commentary.py</code> — combined budget across both modules stays within provider limits. Any error returns <code>None</code>; the frontend shows no narrative rather than crashing.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMPONENT TREE -->
+  <div class="section" id="components" style="padding-bottom:0;">
+    <div class="section-hdr">
+      <div class="section-label">File Map</div>
+      <div class="section-title">Project structure</div>
+    </div>
+    <div class="tree">
+<span class="tree-dim">picker/</span>
+<span class="tree-dim">├─</span> <span class="tree-be">backend/</span>
+<span class="tree-dim">│  ├─</span> <span class="tree-be">main.py</span>           <span class="tree-note">FastAPI app · CORS · lifespan</span>
+<span class="tree-dim">│  ├─</span> <span class="tree-be">scheduler.py</span>      <span class="tree-note">3 clock-aligned asyncio loops (2m/5m/15m) · _process_ticker()</span>
+<span class="tree-dim">│  ├─</span> <span class="tree-be">config.py</span>         <span class="tree-note">TICKERS (12) · SESSION_HOURS · classify_session()</span>
+<span class="tree-dim">│  ├─</span> <span class="tree-be">db.py</span>             <span class="tree-note">aiosqlite helpers · upsert_candles() · get_db()</span>
+<span class="tree-dim">│  ├─</span> <span class="tree-be">mcp_client.py</span>     <span class="tree-note">yfinance wrapper · fetch_ticker(ticker, limit)</span>
+<span class="tree-dim">│  ├─</span> <span class="tree-be">api/</span>
+<span class="tree-dim">│  │  ├─</span> <span class="tree-be">ws.py</span>            <span class="tree-note">WebSocket /ws · broadcast() · client set</span>
+<span class="tree-dim">│  │  ├─</span> <span class="tree-be">routes_candles.py</span>
+<span class="tree-dim">│  │  ├─</span> <span class="tree-be">routes_indicators.py</span> <span class="tree-note">+ POST /ticker/{t}/refresh · /refresh-all</span>
+<span class="tree-dim">│  │  ├─</span> <span class="tree-be">routes_signals.py</span>
+<span class="tree-dim">│  │  ├─</span> <span class="tree-be">routes_predictions.py</span>
+<span class="tree-dim">│  │  ├─</span> <span class="tree-be">routes_composite.py</span>  <span class="tree-note">GET /composite-alerts · 5-min dedup · insert</span>
+<span class="tree-dim">│  │  ├─</span> <span class="tree-be">routes_push.py</span>       <span class="tree-note">VAPID web-push subscribe + Tier 1/2 fan-out</span>
+<span class="tree-dim">│  │  └─</span> <span class="tree-be">routes_costs.py</span>      <span class="tree-note">GET /costs/summary · Cost Explorer + Budgets · 1h cache</span>
+<span class="tree-dim">│  ├─</span> <span class="tree-ai">ai/</span>
+<span class="tree-dim">│  │  ├─</span> <span class="tree-ai">rule_engine.py</span>   <span class="tree-note">33 rule functions · _RULES list · _RULE_WEIGHTS</span>
+<span class="tree-dim">│  │  ├─</span> <span class="tree-ai">evaluator.py</span>     <span class="tree-note">run_evaluation() · build_evidence() · ML blend · resolve_outcomes()</span>
+<span class="tree-dim">│  │  ├─</span> <span class="tree-ai">llm_commentary.py</span> <span class="tree-note">generate_commentary() · 4 providers · rate limiter · change detector</span>
+<span class="tree-dim">│  │  ├─</span> <span class="tree-ai">tape_read.py</span>     <span class="tree-note">tape_read_narrative() · 3-line LLM senior-trader read · candle context hash · cache</span>
+<span class="tree-dim">│  │  ├─</span> <span class="tree-ai">schemas.py</span>       <span class="tree-note">EvidenceFields (28 fields) · PredictionOutput · Pydantic models</span>
+<span class="tree-dim">│  │  └─</span> <span class="tree-ai">ml_model.py</span>      <span class="tree-note">RandomForest blend (activates after 500 samples)</span>
+<span class="tree-dim">│  ├─</span> <span class="tree-be">indicators/</span>
+<span class="tree-dim">│  │  ├─</span> <span class="tree-be">ema.py</span>           <span class="tree-note">ema9 · ema21 · ema50 · ema_state · ema_spread_pct</span>
+<span class="tree-dim">│  │  ├─</span> <span class="tree-be">rsi.py</span>           <span class="tree-note">rsi_14 (Wilder smoothing) · rsi_state (OVERBOUGHT/OVERSOLD/NEUTRAL)</span>
+<span class="tree-dim">│  │  ├─</span> <span class="tree-be">confluence.py</span>    <span class="tree-note">bull_score · bear_score · confluence_bias — 9-signal alignment</span>
+<span class="tree-dim">│  │  ├─</span> <span class="tree-be">vwap.py</span>  <span class="tree-be">trend.py</span>  <span class="tree-be">volume_profile.py</span>
+<span class="tree-dim">│  │  └─</span> <span class="tree-be">session_levels.py</span>  <span class="tree-be">support_resistance.py</span>  <span class="tree-be">swings.py</span>  <span class="tree-be">candle_context.py</span>
+<span class="tree-dim">│  ├─</span> <span class="tree-be">signals/</span>
+<span class="tree-dim">│  │  └─</span> <span class="tree-be">composite.py</span>      <span class="tree-note">POWER_TREND · STRUCTURE_BREAK · VWAP_RESET · EXHAUSTION_REVERSAL · POC_MAGNET</span>
+<span class="tree-dim">│  └─</span> <span class="tree-db">picker.db</span>          <span class="tree-note">SQLite · candles · indicators · predictions · signals · composite_alerts</span>
+
+<span class="tree-dim">├─</span> <span class="tree-fe">frontend/src/</span>
+<span class="tree-dim">│  ├─</span> <span class="tree-fe">App.tsx</span>           <span class="tree-note">root layout · drag-resize · ticker state · sort · infoOpen signal guide</span>
+<span class="tree-dim">│  ├─</span> <span class="tree-fe">stores/</span>
+<span class="tree-dim">│  │  ├─</span> <span class="tree-fe">marketStore.ts</span>   <span class="tree-note">Zustand · tickers{} · handleWsMessage()</span>
+<span class="tree-dim">│  │  └─</span> <span class="tree-fe">wsStore.ts</span>       <span class="tree-note">ReconnectingWebSocket · dispatch → marketStore</span>
+<span class="tree-dim">│  ├─</span> <span class="tree-fe">components/</span>
+<span class="tree-dim">│  │  ├─</span> <span class="tree-fe">Dashboard/TickerGrid.tsx</span>        <span class="tree-note">watchlist · sort A-Z/$/ AI · add/remove</span>
+<span class="tree-dim">│  │  ├─</span> <span class="tree-fe">Dashboard/TickerRow.tsx</span>         <span class="tree-note">price · AI confidence · hover ×</span>
+<span class="tree-dim">│  │  ├─</span> <span class="tree-fe">Dashboard/InsightGrid.tsx</span>       <span class="tree-note">CSS auto-fill grid (desktop) + single-col (mobile) · renders MacroBanner</span>
+<span class="tree-dim">│  │  ├─</span> <span class="tree-fe">Dashboard/TickerInsightCard.tsx</span> <span class="tree-note">pattern card · useInsightData hook · HTF tag · volume chip · signal age · dual desktop/mobile layout</span>
+<span class="tree-dim">│  │  ├─</span> <span class="tree-fe">Dashboard/MacroBanner.tsx</span>       <span class="tree-note">SPY/QQQ/SPX daily trend · Tailwind/Headwind/Conflict alignment label</span>
+<span class="tree-dim">│  │  ├─</span> <span class="tree-fe">Detail/TickerDetail.tsx</span>         <span class="tree-note">inline summary banner · chart + panel drag split · TrendStructureTimeline</span>
+<span class="tree-dim">│  │  ├─</span> <span class="tree-fe">Detail/TrendStructureTimeline.tsx</span> <span class="tree-note">30-point swimlane · TREND lane (fill bar) + STRUCT lane · agreement bar · tooltip</span>
+<span class="tree-dim">│  │  ├─</span> <span class="tree-fe">Detail/MarketReadPanel.tsx</span>      <span class="tree-note">AI eval + Tape Read · LLM Generate · confidence bar · rules list · signals always open</span>
+<span class="tree-dim">│  │  ├─</span> <span class="tree-fe">Detail/TapeReadCard.tsx</span>         <span class="tree-note">candle context · patterns · structure · volume character · near-level</span>
+<span class="tree-dim">│  │  ├─</span> <span class="tree-fe">Chart/CandlestickChart.tsx</span>      <span class="tree-note">LW-Charts v5 · session bg · price lines · markers</span>
+<span class="tree-dim">│  │  └─</span> <span class="tree-fe">Alerts/AlertsPanel.tsx</span>         <span class="tree-note">batch display · T1/T2/T3 tier filters · ↻ manual refresh</span>
+<span class="tree-dim">│  ├─</span> <span class="tree-fe">hooks/useWebSocket.ts</span>
+<span class="tree-dim">│  ├─</span> <span class="tree-fe">utils/formatters.ts</span>       <span class="tree-note">TICKERS (12) · formatPrice() · predictionColor()</span>
+<span class="tree-dim">│  ├─</span> <span class="tree-fe">utils/patternEngine.ts</span>    <span class="tree-note">runPatternEngine() · 8 patterns · lastFlipMins · SignalChip[] · pure TS (no React)</span>
+<span class="tree-dim">│  └─</span> <span class="tree-fe">index.css</span>                 <span class="tree-note">CSS custom properties · layout · dark theme</span>
+
+<span class="tree-dim">└─</span> <span class="tree-dim">landing.html</span>  <span class="tree-dim">architecture.html</span>  <span class="tree-dim">initial-plan-prompt.txt</span>
+    </div>
+  </div>
+
+  <!-- PWA + PUSH NOTIFICATIONS -->
+  <div class="section" id="pwa">
+    <div class="section-hdr">
+      <div class="section-label">Progressive Web App &amp; Web Push</div>
+      <div class="section-title">PWA + Push Notification Architecture</div>
+      <div class="section-sub">Picker is installable as a native-feeling app on iOS and Android. Tier 1 &amp; 2 composite alerts are delivered via VAPID Web Push to the OS notification tray — even when the browser is closed.</div>
+    </div>
+
+    <!-- Service Worker / Push Flow -->
+    <div class="flow-row" style="margin-top:28px;align-items:stretch;gap:3px;">
+      <div class="flow-box fb-blue" style="flex:1;min-width:130px;text-align:center;">
+        <div class="fb-tag" style="color:var(--blue)">BROWSER</div>
+        <h4>React App</h4>
+        <p>User taps 🔔 bell<br>in Alerts panel</p>
+      </div>
+      <div class="flow-arrow">&#8594;</div>
+      <div class="flow-box fb-purple" style="flex:1;min-width:150px;text-align:center;">
+        <div class="fb-tag" style="color:var(--accent2)">PUSH API</div>
+        <h4>PushManager<br>.subscribe()</h4>
+        <p>Browser registers with<br>Push Service (FCM/APNS)</p>
+      </div>
+      <div class="flow-arrow">&#8594;</div>
+      <div class="flow-box fb-green" style="flex:1;min-width:150px;text-align:center;">
+        <div class="fb-tag" style="color:var(--green)">BACKEND</div>
+        <h4>POST /api/push<br>/subscribe</h4>
+        <p>Endpoint + p256dh + auth<br>saved to push_subscriptions</p>
+      </div>
+      <div class="flow-arrow">&#8594;</div>
+      <div class="flow-box fb-orange" style="flex:1;min-width:150px;text-align:center;">
+        <div class="fb-tag" style="color:var(--orange)">SCHEDULER</div>
+        <h4>scheduler.py</h4>
+        <p>Tier ≤ 2 alert fired →<br>broadcast_push(alert)</p>
+      </div>
+      <div class="flow-arrow">&#8594;</div>
+      <div class="flow-box fb-blue" style="flex:1;min-width:130px;text-align:center;">
+        <div class="fb-tag" style="color:var(--blue)">OS NOTIF</div>
+        <h4>Device</h4>
+        <p>Push Service delivers<br>to OS notification tray</p>
+      </div>
+    </div>
+
+    <!-- PWA + SW Layer diagram -->
+    <div class="layers" style="margin-top:28px;">
+      <div class="layer l-fe">
+        <div class="layer-icon">📲</div>
+        <div class="layer-body">
+          <div class="layer-title">PWA Shell — vite-plugin-pwa 1.3.0</div>
+          <div class="layer-sub"><code>injectManifest</code> strategy. Web App Manifest defines app name, icons (192×512 px), theme color, standalone display mode. Registered in <code>main.tsx</code> via <code>virtual:pwa-register</code>. iOS meta tags (apple-mobile-web-app-capable, status-bar-style) in <code>index.html</code>.</div>
+        </div>
+        <div class="layer-tags"><span class="tag">manifest.webmanifest</span><span class="tag">pwa-192.png</span><span class="tag">pwa-512.png</span></div>
+      </div>
+      <div class="layer l-st">
+        <div class="layer-icon">⚙️</div>
+        <div class="layer-body">
+          <div class="layer-title">Service Worker — src/sw.ts</div>
+          <div class="layer-sub">Compiled by vite-plugin-pwa. Handles Workbox precaching (<code>precacheAndRoute</code>). Listens for <code>push</code> events → calls <code>showNotification()</code> with title, body, icon, badge, tag, and ticker data. Listens for <code>notificationclick</code> → focuses existing app window or opens new tab, then posts <code>NAVIGATE_TICKER</code> message to React app.</div>
+        </div>
+        <div class="layer-tags"><span class="tag">workbox-precaching 7</span><span class="tag">workbox-window 7</span></div>
+      </div>
+      <div class="layer l-api">
+        <div class="layer-icon">🔑</div>
+        <div class="layer-body">
+          <div class="layer-title">Push Subscription Utilities — utils/pushNotifications.ts</div>
+          <div class="layer-sub"><code>subscribeToPush()</code> fetches VAPID public key from <code>/api/push/vapid-key</code>, requests notification permission, calls <code>pushManager.subscribe()</code>, then POSTs the resulting PushSubscription to the backend. <code>unsubscribeFromPush()</code> reverses the process. <code>isPushSubscribed()</code> checks active subscription state.</div>
+        </div>
+        <div class="layer-tags"><span class="tag">Notification API</span><span class="tag">PushManager</span></div>
+      </div>
+      <div class="layer l-ai">
+        <div class="layer-icon">📡</div>
+        <div class="layer-body">
+          <div class="layer-title">VAPID Sender — backend/push.py</div>
+          <div class="layer-sub"><code>broadcast_push(alert)</code> loads all subscriptions from DB, filters by per-subscription ticker list (or all if null), calls <code>webpush()</code> via pywebpush 2.0.0 with VAPID signing. TTL=300s (stale alerts discarded). Expired subscriptions (HTTP 404/410) auto-removed. Runs fanout via <code>run_in_executor</code> to avoid blocking the async event loop.</div>
+        </div>
+        <div class="layer-tags"><span class="tag">pywebpush 2.0.0</span><span class="tag">aes128gcm</span><span class="tag">TTL 300s</span></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /page -->
+
+<footer>
+  <span>Picker — Architecture Reference · May 2026</span>
+  <span>FastAPI 0.115 · React 19 · Zustand 5 · Lightweight Charts 5.2 · yfinance 1.3 · SQLite · pywebpush 2</span>
+  <a href="https://nysepicker.duckdns.org" target="_blank">Dashboard →</a>
+</footer>
+
+</body>
+</html>

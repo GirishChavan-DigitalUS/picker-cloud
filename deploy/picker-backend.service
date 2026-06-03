@@ -1,0 +1,33 @@
+# Picker Backend — systemd service
+# Install to: /etc/systemd/system/picker-backend.service
+
+[Unit]
+Description=Picker NYSE Dashboard Backend
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=exec
+User=ec2-user
+Group=ec2-user
+WorkingDirectory=/opt/picker/backend
+EnvironmentFile=/opt/picker/.env
+ExecStart=/opt/picker/backend/venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000
+Restart=on-failure
+RestartSec=5
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=picker-backend
+
+# Security hardening
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/opt/picker/backend
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

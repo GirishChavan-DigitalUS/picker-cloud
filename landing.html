@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Picker — NYSE Intraday Dashboard</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0d0f14;
+      --surface:  #141720;
+      --surface2: #1b1f2e;
+      --border:   #252a3a;
+      --text:     #e2e8f0;
+      --muted:    #6b7280;
+      --accent:   #7c4dff;
+      --accent2:  #a78bfa;
+      --green:    #26a69a;
+      --red:      #ef5350;
+      --orange:   #ff9800;
+      --gold:     #ffc107;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(13,15,20,0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 40px; height: 56px;
+    }
+    .nav-brand { font-size: 1.1rem; font-weight: 800; letter-spacing: -0.02em; }
+    .nav-brand span { color: var(--accent2); }
+    .nav-links { display: flex; gap: 28px; }
+    .nav-links a { color: var(--muted); text-decoration: none; font-size: 0.85rem; font-weight: 500; transition: color .2s; }
+    .nav-links a:hover { color: var(--text); }
+    .nav-cta {
+      background: var(--accent); color: #fff; border: none;
+      padding: 7px 18px; border-radius: 6px; font-size: 0.82rem;
+      font-weight: 600; cursor: pointer; text-decoration: none;
+      transition: opacity .2s;
+    }
+    .nav-cta:hover { opacity: .85; }
+
+    /* ── HERO ── */
+    .hero {
+      position: relative;
+      min-height: 90vh;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      text-align: center;
+      padding: 80px 24px 60px;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse 900px 600px at 50% 30%, rgba(124,77,255,0.12) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(124,77,255,0.12); border: 1px solid rgba(124,77,255,0.3);
+      border-radius: 100px; padding: 5px 14px;
+      font-size: 0.75rem; font-weight: 600; color: var(--accent2);
+      letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 24px;
+    }
+    .hero-badge::before { content: '●'; color: var(--green); font-size: 0.6rem; }
+    .hero h1 {
+      font-size: clamp(2.6rem, 6vw, 5rem);
+      font-weight: 800; letter-spacing: -0.04em;
+      line-height: 1.08;
+      max-width: 780px;
+    }
+    .hero h1 em { font-style: normal; color: var(--accent2); }
+    .hero-sub {
+      margin-top: 20px; max-width: 540px;
+      font-size: clamp(1rem, 2vw, 1.15rem);
+      color: var(--muted); line-height: 1.7;
+    }
+    .hero-actions { margin-top: 36px; display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+    .btn-primary {
+      background: var(--accent); color: #fff;
+      padding: 13px 30px; border-radius: 8px;
+      font-size: 0.92rem; font-weight: 700;
+      text-decoration: none; transition: opacity .2s, transform .1s;
+      display: inline-flex; align-items: center; gap: 8px;
+    }
+    .btn-primary:hover { opacity: .88; transform: translateY(-1px); }
+    .btn-outline {
+      background: transparent; color: var(--text);
+      border: 1px solid var(--border);
+      padding: 12px 28px; border-radius: 8px;
+      font-size: 0.92rem; font-weight: 600;
+      text-decoration: none; transition: border-color .2s, background .2s;
+      display: inline-flex; align-items: center; gap: 8px;
+    }
+    .btn-outline:hover { border-color: var(--accent2); background: rgba(124,77,255,0.06); }
+
+    /* Live ticker strip */
+    .ticker-strip {
+      margin-top: 60px; width: 100%;
+      display: flex; justify-content: center;
+      overflow: hidden;
+    }
+    .ticker-strip-inner {
+      display: flex; gap: 12px;
+      animation: scroll-x 28s linear infinite;
+      white-space: nowrap;
+    }
+    @keyframes scroll-x {
+      from { transform: translateX(0); }
+      to   { transform: translateX(-50%); }
+    }
+    .tick-chip {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 8px 14px;
+      display: inline-flex; gap: 10px; align-items: center;
+      font-size: 0.78rem;
+    }
+    .tick-chip .sym { font-weight: 700; color: #e2e8f0; }
+    .tick-chip .prc { font-family: monospace; color: #a0aec0; }
+    .tick-chip .ai-up   { font-weight: 700; font-size: 0.72rem; color: var(--green); }
+    .tick-chip .ai-dn   { font-weight: 700; font-size: 0.72rem; color: var(--red); }
+
+    /* ── SECTION COMMON ── */
+    section { padding: 100px 24px; }
+    .section-label {
+      font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--accent2);
+      margin-bottom: 12px;
+    }
+    .section-title {
+      font-size: clamp(1.8rem, 4vw, 2.8rem);
+      font-weight: 800; letter-spacing: -0.03em;
+      line-height: 1.15;
+    }
+    .section-sub {
+      margin-top: 14px; max-width: 520px;
+      color: var(--muted); font-size: 1rem; line-height: 1.7;
+    }
+    .container { max-width: 1120px; margin: 0 auto; }
+
+    /* ── MOCK DASHBOARD ── */
+    .mock-wrap {
+      margin-top: 60px;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      box-shadow: 0 40px 120px rgba(0,0,0,0.6);
+    }
+    .mock-topbar {
+      background: var(--surface);
+      height: 44px; display: flex; align-items: center;
+      padding: 0 16px; gap: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .dot { width: 12px; height: 12px; border-radius: 50%; }
+    .dot-r { background: #ff5f57; }
+    .dot-y { background: #febc2e; }
+    .dot-g { background: #28c840; }
+    .mock-title { flex: 1; text-align: center; font-size: 0.8rem; color: var(--muted); font-weight: 600; }
+    .mock-live { font-size: 0.72rem; font-weight: 700; color: var(--green); }
+    .mock-body {
+      background: var(--surface);
+      display: flex; height: 480px;
+    }
+    /* left list */
+    .mock-list {
+      width: 172px; flex-shrink: 0;
+      border-right: 1px solid var(--border);
+      padding: 6px 0;
+    }
+    .mock-controls {
+      padding: 5px 8px 4px;
+      display: flex; gap: 4px; align-items: center;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 4px;
+    }
+    .mock-sort-btn {
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--muted); border-radius: 3px; padding: 2px 6px;
+      font-size: 0.6rem; font-weight: 600;
+    }
+    .mock-sort-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .mock-sort-plus { margin-left: auto; background: var(--surface2); border: 1px solid var(--border); color: var(--accent2); border-radius: 3px; padding: 2px 6px; font-size: 0.75rem; }
+    .mock-list table { width: 100%; border-collapse: collapse; font-size: 0.72rem; }
+    .mock-list th { padding: 3px 8px; color: var(--muted); font-weight: 700; font-size: 0.6rem; text-align: left; text-transform: uppercase; letter-spacing: 0.04em; }
+    .mock-list td { padding: 5px 8px; }
+    .mock-list tr.sel td { background: rgba(124,77,255,0.13); border-left: 2px solid var(--accent); }
+    .mock-list tr:hover td { background: rgba(255,255,255,0.03); cursor: pointer; }
+    .sym-cell { font-weight: 700; color: #e2e8f0; }
+    .prc-bull { font-family: monospace; color: var(--green); }
+    .prc-bear { font-family: monospace; color: var(--red); }
+    .prc-neu  { font-family: monospace; color: #a0aec0; }
+    .ai-up { font-weight: 700; color: var(--green); font-size: 0.68rem; }
+    .ai-dn { font-weight: 700; color: var(--red);   font-size: 0.68rem; }
+    .ai-na { color: var(--muted); font-size: 0.68rem; }
+    /* chart area */
+    .mock-chart-area {
+      flex: 1; min-width: 0;
+      background: var(--bg);
+      position: relative; overflow: hidden;
+    }
+    .mock-chart-svg { width: 100%; height: 100%; }
+    .mock-chart-header {
+      position: absolute; top: 10px; left: 14px;
+      font-size: 0.82rem; color: #a0aec0; font-weight: 600;
+    }
+    .mock-chart-header strong { color: #e2e8f0; font-size: 1rem; }
+    .mock-legend {
+      position: absolute; top: 10px; right: 14px;
+      display: flex; gap: 8px; font-size: 0.62rem; font-weight: 700;
+    }
+    .leg-pre  { color: #7986cb; }
+    .leg-reg  { color: var(--green); }
+    .leg-ah   { color: var(--orange); }
+    /* sidebar */
+    .mock-sidebar {
+      width: 220px; flex-shrink: 0;
+      border-left: 1px solid var(--border);
+      display: flex; flex-direction: column; gap: 0;
+      overflow: hidden;
+    }
+    .mock-card {
+      flex: 1; min-height: 0;
+      border-bottom: 1px solid var(--border);
+      padding: 10px 12px;
+      overflow: hidden;
+    }
+    .mock-card-title { font-size: 0.62rem; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 8px; }
+    .ind-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.7rem; margin-bottom: 4px; }
+    .ind-label { color: var(--muted); }
+    .ind-val { font-weight: 600; font-family: monospace; }
+    .ind-val.bull { color: var(--green); }
+    .ind-val.bear { color: var(--red); }
+    .ind-val.neu  { color: #a0aec0; }
+    .ai-direction {
+      display: inline-block; padding: 3px 10px; border-radius: 4px;
+      font-size: 0.72rem; font-weight: 800; letter-spacing: 0.04em;
+      margin-bottom: 8px;
+    }
+    .ai-direction.up { background: rgba(38,166,154,0.18); color: var(--green); }
+    .ai-direction.dn { background: rgba(239,83,80,0.18);  color: var(--red); }
+    .conf-bar-wrap { height: 5px; background: var(--border); border-radius: 3px; margin-bottom: 6px; }
+    .conf-bar { height: 100%; border-radius: 3px; }
+    .conf-bar.up { background: var(--green); }
+    .conf-bar.dn { background: var(--red); }
+    .rule-pill {
+      display: inline-block; padding: 2px 7px; border-radius: 3px;
+      font-size: 0.6rem; font-weight: 600; margin: 2px 2px 2px 0;
+    }
+    .rule-pill.up { background: rgba(38,166,154,0.15); color: var(--green); }
+    .rule-pill.dn { background: rgba(239,83,80,0.15);  color: var(--red); }
+
+    /* ── FEATURES GRID ── */
+    #features { background: var(--surface); }
+    .features-grid {
+      margin-top: 56px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+    }
+    .feat-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 28px;
+      transition: border-color .25s, transform .2s;
+    }
+    .feat-card:hover { border-color: rgba(124,77,255,0.4); transform: translateY(-3px); }
+    .feat-icon {
+      width: 42px; height: 42px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.3rem; margin-bottom: 16px;
+    }
+    .fi-purple { background: rgba(124,77,255,0.15); }
+    .fi-green  { background: rgba(38,166,154,0.15); }
+    .fi-orange { background: rgba(255,152,0,0.15); }
+    .fi-blue   { background: rgba(66,165,245,0.15); }
+    .fi-red    { background: rgba(239,83,80,0.15); }
+    .fi-gold   { background: rgba(255,193,7,0.15); }
+    .feat-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 8px; }
+    .feat-card p  { font-size: 0.85rem; color: var(--muted); line-height: 1.65; }
+
+    /* ── HOW IT WORKS ── */
+    .steps {
+      margin-top: 56px;
+      display: flex; gap: 0;
+      position: relative;
+    }
+    .steps::before {
+      content: '';
+      position: absolute; top: 28px; left: calc(100% / 8);
+      right: calc(100% / 8); height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border), var(--border), transparent);
+    }
+    .step { flex: 1; text-align: center; padding: 0 16px; position: relative; }
+    .step-num {
+      width: 56px; height: 56px; border-radius: 50%;
+      background: var(--surface2); border: 2px solid var(--accent);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem; font-weight: 800; color: var(--accent2);
+      margin: 0 auto 16px;
+      position: relative; z-index: 1;
+    }
+    .step h4 { font-size: 0.9rem; font-weight: 700; margin-bottom: 6px; }
+    .step p  { font-size: 0.8rem; color: var(--muted); }
+
+    /* ── STACK ── */
+    #stack { background: var(--bg); }
+    .stack-grid {
+      margin-top: 48px;
+      display: flex; flex-wrap: wrap; gap: 12px; justify-content: center;
+    }
+    .stack-chip {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 18px;
+      font-size: 0.82rem; font-weight: 600;
+      display: flex; align-items: center; gap: 8px;
+      transition: border-color .2s;
+    }
+    .stack-chip:hover { border-color: var(--accent2); }
+    .stack-chip .sc-dot {
+      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+    }
+
+    /* ── SIGNALS ── */
+    #signals { background: var(--surface); }
+    .signals-grid {
+      margin-top: 48px;
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+    }
+    .signal-card {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 10px; padding: 20px;
+    }
+    .sig-dir {
+      font-size: 0.68rem; font-weight: 800; text-transform: uppercase;
+      letter-spacing: 0.06em; margin-bottom: 6px;
+    }
+    .sig-dir.up { color: var(--green); }
+    .sig-dir.dn { color: var(--red); }
+    .signal-card h4 { font-size: 0.88rem; font-weight: 700; margin-bottom: 6px; }
+    .signal-card p  { font-size: 0.78rem; color: var(--muted); line-height: 1.55; }
+
+    /* ── CTA ── */
+    #cta {
+      background: radial-gradient(ellipse 1000px 500px at 50% 100%, rgba(124,77,255,0.14) 0%, transparent 70%),
+                  var(--bg);
+      text-align: center; padding: 120px 24px 100px;
+    }
+    #cta h2 { font-size: clamp(2rem, 4vw, 3rem); font-weight: 800; letter-spacing: -0.03em; }
+    #cta p  { margin-top: 16px; color: var(--muted); max-width: 480px; margin-left: auto; margin-right: auto; }
+    .cta-btns { margin-top: 36px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+    /* ── FOOTER ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 28px 40px; text-align: center;
+      font-size: 0.78rem; color: var(--muted);
+      display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 12px;
+    }
+    footer a { color: var(--muted); text-decoration: none; }
+    footer a:hover { color: var(--text); }
+
+    /* ── INSIGHT GRID MOCK (main page — replaces old chart mock) ── */
+    .mock-insight-area {
+      flex: 1; min-width: 0; background: #0f0f1a;
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .mock-macro-bar {
+      flex-shrink: 0; background: #141720;
+      border-bottom: 1px solid #252a3a;
+      padding: 5px 10px; display: flex; align-items: center; gap: 8px;
+      font-size: 0.6rem; font-weight: 700;
+    }
+    .mmi-sym  { color: var(--muted); font-size: 0.55rem; }
+    .mmi-tag  { font-size: 0.58rem; font-weight: 700; padding: 1px 5px; border-radius: 3px; }
+    .mmi-up   { background: rgba(34,197,94,0.1);  border: 1px solid rgba(34,197,94,0.28);  color: #22c55e; }
+    .mmi-dn   { background: rgba(239,83,80,0.1);  border: 1px solid rgba(239,83,80,0.28);  color: #ef5350; }
+    .mmi-align { margin-left: auto; font-size: 0.58rem; font-weight: 700; padding: 2px 8px; border-radius: 3px;
+                 background: rgba(239,83,80,0.08); border: 1px solid rgba(239,83,80,0.28); color: #ef5350; }
+    .mock-icg {
+      flex: 1; overflow-y: auto; overflow-x: hidden;
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 8px; padding: 8px; align-content: start;
+      scrollbar-width: thin; scrollbar-color: #252a3a #0f0f1a;
+    }
+    .mic { background: #141720; border: 1px solid #252a3a; border-radius: 8px;
+           overflow: hidden; display: flex; flex-direction: column; font-size: 0.7rem; }
+    .mic-strip { height: 3px; flex-shrink: 0; }
+    .mic-hdr { display: flex; align-items: center; gap: 5px; padding: 5px 9px 4px;
+               border-bottom: 1px solid #252a3a; flex-shrink: 0; cursor: pointer; }
+    .mic-sym  { font-weight: 800; font-size: 0.88rem; color: #e0e0e0; }
+    .mic-prc  { font-family: monospace; font-size: 0.76rem; color: #c0c0c0; }
+    .mic-chg-up { font-size: 0.64rem; font-weight: 600; color: #22c55e; }
+    .mic-chg-dn { font-size: 0.64rem; font-weight: 600; color: #ef5350; }
+    .mic-htf-up { font-size: 0.5rem; font-weight: 700; padding: 1px 4px; border-radius: 3px;
+                  background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.25); color: #22c55e; }
+    .mic-htf-dn { font-size: 0.5rem; font-weight: 700; padding: 1px 4px; border-radius: 3px;
+                  background: rgba(239,83,80,0.1); border: 1px solid rgba(239,83,80,0.25); color: #ef5350; }
+    .mic-pat  { font-size: 0.52rem; font-weight: 700; padding: 1px 5px; border-radius: 3px; margin-left: auto; }
+    .mic-det  { font-size: 0.54rem; color: #475569; border: 1px solid #252a3a; border-radius: 3px; padding: 1px 5px; }
+    .mic-body { display: flex; flex: 1; }
+    .mic-tl   { width: 58px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center;
+                justify-content: center; padding: 10px 6px; border-right: 1px solid #252a3a; gap: 5px; }
+    .mic-circle { width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0; }
+    .mic-lbl  { font-size: 0.46rem; font-weight: 700; letter-spacing: 0.05em; text-align: center; line-height: 1.3; }
+    .mic-info { flex: 1; padding: 7px 9px; display: flex; flex-direction: column; gap: 5px; }
+    .mi-lbl   { font-size: 0.44rem; color: #475569; letter-spacing: 0.08em; margin-bottom: 1px; }
+    .mi-val   { font-size: 0.74rem; font-weight: 700; }
+    .mi-row   { display: flex; align-items: center; gap: 6px; }
+    .mi-bar   { flex: 1; height: 5px; background: #1e2030; border-radius: 3px; overflow: hidden; }
+    .mi-fill  { height: 100%; border-radius: 3px; }
+    .mi-age   { font-size: 0.46rem; flex-shrink: 0; }
+    .mi-vbadge { font-size: 0.46rem; font-weight: 700; padding: 1px 4px; border-radius: 3px; }
+    .mi-action { font-size: 0.57rem; padding: 3px 7px; border-radius: 4px; line-height: 1.35; }
+    .mic-hist  { border-top: 1px solid #252a3a; padding: 4px 8px 5px; flex-shrink: 0; }
+    .mh-lbl   { font-size: 0.42rem; color: #334155; letter-spacing: 0.07em; margin-bottom: 3px; }
+    .mh-chips { display: flex; gap: 3px; overflow-x: auto; scrollbar-width: none; }
+    .mh-chip  { flex: 0 0 auto; padding: 2px 5px; border-radius: 3px; font-size: 0.44rem;
+                font-weight: 700; text-align: center; min-width: 28px; border: 1px solid; }
+    .mh-chip.now { outline: 1px solid; outline-offset: 1px; }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+      /* Nav */
+      nav { padding: 0 16px; }
+      .nav-links { display: none; }
+      .nav-cta { font-size: 0.78rem; padding: 7px 14px; }
+
+      /* Hero */
+      #hero { padding: 80px 20px 60px; }
+      .hero-badge { font-size: 0.68rem; }
+      .hero-h1 { font-size: clamp(1.8rem, 8vw, 2.6rem); }
+      .hero-sub { font-size: 0.9rem; }
+      .hero-actions { flex-direction: column; align-items: stretch; gap: 10px; }
+      .btn-primary, .btn-outline { text-align: center; justify-content: center; }
+      .ticker-strip { display: none; }
+
+      /* Mock dashboard */
+      .mock-wrap { border-radius: 8px; }
+      .mock-body { height: 240px; }
+      .mock-list { width: 110px; }
+      .mock-sidebar { display: none; }
+
+      /* Sections */
+      section { padding: 64px 20px; }
+
+      /* Features grid: 1 column */
+      .features-grid { grid-template-columns: 1fr; gap: 14px; }
+
+      /* Steps */
+      .steps::before { display: none; }
+      .steps { flex-direction: column; gap: 24px; }
+
+      /* CTA buttons */
+      .cta-btns { flex-direction: column; align-items: center; }
+
+      /* Footer */
+      footer { flex-direction: column; text-align: center; padding: 24px 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-brand">Picker <span>📈</span></div>
+  <div class="nav-links">
+    <a href="#features">Features</a>
+    <a href="#how">How it works</a>
+    <a href="#signals">AI Signals</a>
+    <a href="#stack">Stack</a>
+    <a href="architecture.html">Architecture</a>
+  </div>
+  <a class="nav-cta" href="/app">Open Dashboard →</a>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge">🟢 Live on AWS · nysepicker.duckdns.org · PWA ✓ · Multi-TF</div>
+  <h1>Trade smarter with<br><em>AI-powered signals</em></h1>
+  <p class="hero-sub">
+    Picker is a full-stack intraday dashboard that streams live prices, computes 20+ technical indicators across <strong>three timeframes (2m / 5m / 15m)</strong>, runs a 33-rule AI evaluator, fires 5 composite high-conviction alerts, delivers pattern-detected insight cards for all 12 tracked symbols, shows macro index alignment (SPY/QQQ/SPX), and pushes Tier 1 &amp; 2 alerts straight to your phone &mdash; even when the browser is closed. Installable as a PWA on iOS and Android. Includes a built-in <strong>AWS cost dashboard</strong> for ops visibility.
+  </p>
+  <div class="hero-actions">
+    <a class="btn-primary" href="/app">Launch Dashboard →</a>
+    <a class="btn-outline" href="architecture.html">View Architecture</a>
+  </div>
+
+  <!-- Animated ticker strip -->
+  <div class="ticker-strip">
+    <div class="ticker-strip-inner">
+      <div class="tick-chip"><span class="sym">SPY</span><span class="prc-bear prc">743.74</span><span class="ai-dn">71% ↓</span></div>
+      <div class="tick-chip"><span class="sym">QQQ</span><span class="prc-bear prc">715.31</span><span class="ai-dn">71% ↓</span></div>
+      <div class="tick-chip"><span class="sym">SPX</span><span class="prc-bull prc">7473.47</span><span class="ai-up">55% ↑</span></div>
+      <div class="tick-chip"><span class="sym">AAPL</span><span class="prc-bear prc">308.40</span><span class="ai-dn">78% ↓</span></div>
+      <div class="tick-chip"><span class="sym">NVDA</span><span class="prc-bear prc">214.30</span><span class="ai-dn">100% ↓</span></div>
+      <div class="tick-chip"><span class="sym">TSLA</span><span class="prc-bear prc">423.68</span><span class="ai-dn">71% ↓</span></div>
+      <div class="tick-chip"><span class="sym">MSFT</span><span class="prc-bear prc">417.79</span><span class="ai-dn">100% ↓</span></div>
+      <div class="tick-chip"><span class="sym">AMZN</span><span class="prc-bear prc">265.40</span><span class="ai-dn">71% ↓</span></div>
+      <div class="tick-chip"><span class="sym">GOOGL</span><span class="prc-bear prc">382.29</span><span class="ai-dn">71% ↓</span></div>
+      <div class="tick-chip"><span class="sym">PLTR</span><span class="prc-bull prc">135.94</span><span class="ai-up">62% ↑</span></div>
+      <div class="tick-chip"><span class="sym">META</span><span class="prc-bull prc">633.12</span><span class="ai-dn">85% ↓</span></div>
+      <div class="tick-chip"><span class="sym">AMD</span><span class="prc-bull prc">522.05</span><span class="ai-up">81% ↑</span></div>
+      <!-- duplicate for loop -->
+      <div class="tick-chip"><span class="sym">SPY</span><span class="prc-bear prc">743.74</span><span class="ai-dn">71% ↓</span></div>
+      <div class="tick-chip"><span class="sym">QQQ</span><span class="prc-bear prc">715.31</span><span class="ai-dn">71% ↓</span></div>
+      <div class="tick-chip"><span class="sym">SPX</span><span class="prc-bull prc">7473.47</span><span class="ai-up">55% ↑</span></div>
+      <div class="tick-chip"><span class="sym">AAPL</span><span class="prc-bear prc">308.40</span><span class="ai-dn">78% ↓</span></div>
+      <div class="tick-chip"><span class="sym">NVDA</span><span class="prc-bear prc">214.30</span><span class="ai-dn">100% ↓</span></div>
+      <div class="tick-chip"><span class="sym">TSLA</span><span class="prc-bear prc">423.68</span><span class="ai-dn">71% ↓</span></div>
+      <div class="tick-chip"><span class="sym">MSFT</span><span class="prc-bear prc">417.79</span><span class="ai-dn">100% ↓</span></div>
+      <div class="tick-chip"><span class="sym">AMZN</span><span class="prc-bear prc">265.40</span><span class="ai-dn">71% ↓</span></div>
+      <div class="tick-chip"><span class="sym">GOOGL</span><span class="prc-bear prc">382.29</span><span class="ai-dn">71% ↓</span></div>
+      <div class="tick-chip"><span class="sym">PLTR</span><span class="prc-bull prc">135.94</span><span class="ai-up">62% ↑</span></div>
+      <div class="tick-chip"><span class="sym">META</span><span class="prc-bull prc">633.12</span><span class="ai-dn">85% ↓</span></div>
+      <div class="tick-chip"><span class="sym">AMD</span><span class="prc-bull prc">522.05</span><span class="ai-up">81% ↑</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- MOCK DASHBOARD -->
+<div class="container">
+  <div class="mock-wrap">
+    <div class="mock-topbar">
+      <div class="dot dot-r"></div>
+      <div class="dot dot-y"></div>
+      <div class="dot dot-g"></div>
+      <span class="mock-title">Picker — NYSE Intraday Dashboard</span>
+      <span class="mock-live">● LIVE</span>
+    </div>
+    <div class="mock-body">
+      <!-- Ticker list -->
+      <div class="mock-list">
+        <div class="mock-controls">
+          <span style="font-size:0.58rem;color:var(--muted);font-weight:700;">SORT</span>
+          <span class="mock-sort-btn">A-Z</span>
+          <span class="mock-sort-btn active">AI</span>
+          <span class="mock-sort-plus">+</span>
+        </div>
+        <table>
+          <thead><tr><th>Ticker</th><th>Price</th><th>AI</th></tr></thead>
+          <tbody>
+            <tr><td class="sym-cell">SPX</td><td class="prc-bull">7473.47</td><td class="ai-up">55%</td></tr>
+            <tr><td class="sym-cell">PLTR</td><td class="prc-bull">135.94</td><td class="ai-up">62%</td></tr>
+            <tr><td class="sym-cell">MSFT</td><td class="prc-bear">417.79</td><td class="ai-dn">100%</td></tr>
+            <tr class="sel"><td class="sym-cell">SPY</td><td class="prc-bear">743.74</td><td class="ai-dn">71%</td></tr>
+            <tr><td class="sym-cell">QQQ</td><td class="prc-bear">715.31</td><td class="ai-dn">71%</td></tr>
+            <tr><td class="sym-cell">AAPL</td><td class="prc-bear">308.40</td><td class="ai-dn">78%</td></tr>
+            <tr><td class="sym-cell">NVDA</td><td class="prc-bear">214.30</td><td class="ai-dn">100%</td></tr>
+            <tr><td class="sym-cell">TSLA</td><td class="prc-bear">423.68</td><td class="ai-dn">71%</td></tr>
+            <tr><td class="sym-cell">AMZN</td><td class="prc-bear">265.40</td><td class="ai-dn">71%</td></tr>
+            <tr><td class="sym-cell">GOOGL</td><td class="prc-bear">382.29</td><td class="ai-dn">71%</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Insight Grid — main page view with ticker cards -->
+      <div class="mock-insight-area">
+        <!-- Macro alignment banner -->
+        <div class="mock-macro-bar">
+          <span class="mmi-sym">SPY</span><span class="mmi-tag mmi-up">D↑</span>
+          <span class="mmi-sym" style="margin-left:6px">QQQ</span><span class="mmi-tag mmi-dn">D↓</span>
+          <span class="mmi-sym" style="margin-left:6px">SPX</span><span class="mmi-tag mmi-up">D↑</span>
+          <div class="mmi-align">▼ Macro Headwind</div>
+        </div>
+        <!-- 2-column insight card grid -->
+        <div class="mock-icg">
+
+          <!-- Card: SPY (green / BULL) -->
+          <div class="mic">
+            <div class="mic-strip" style="background:#00C896"></div>
+            <div class="mic-hdr">
+              <span class="mic-sym">SPY</span>
+              <span class="mic-prc">755.98</span>
+              <span class="mic-chg-up">▲+0.16%</span>
+              <span class="mic-htf-up">D↑</span>
+              <span class="mic-pat" style="background:rgba(0,200,150,0.14);border:1px solid rgba(0,200,150,0.35);color:#00C896">CONTINUATION</span>
+              <span class="mic-det">→ Detail</span>
+            </div>
+            <div class="mic-body">
+              <div class="mic-tl">
+                <div class="mic-circle" style="background:#00C896;box-shadow:0 0 14px rgba(0,200,150,0.5)"></div>
+                <span class="mic-lbl" style="color:#00C896">BULL</span>
+              </div>
+              <div class="mic-info">
+                <div>
+                  <div class="mi-lbl">MARKET READ</div>
+                  <div class="mi-val" style="color:#00C896">▲ UPTREND</div>
+                </div>
+                <div>
+                  <div class="mi-lbl">TREND · CONFIDENCE</div>
+                  <div class="mi-row">
+                    <span style="font-size:0.66rem;font-weight:700;color:#22c55e;white-space:nowrap">↑ UP · 72% conf</span>
+                    <div class="mi-bar"><div class="mi-fill" style="width:72%;background:#22c55e"></div></div>
+                    <span class="mi-age" style="color:#22c55e">~2m</span>
+                  </div>
+                </div>
+                <div>
+                  <div class="mi-lbl">VOLUME</div>
+                  <div class="mi-row" style="gap:5px">
+                    <span style="font-size:0.65rem;font-weight:700;color:#00C896">1.4×</span>
+                    <span class="mi-vbadge" style="background:rgba(0,200,150,0.12);border:1px solid rgba(0,200,150,0.3);color:#00C896">HIGH</span>
+                  </div>
+                </div>
+                <div>
+                  <div class="mi-lbl">SIGNAL REASON</div>
+                  <div style="font-size:0.62rem;font-weight:600;color:#c0c0c0;margin-bottom:3px">Trend Continuation</div>
+                  <div class="mi-action" style="background:rgba(0,200,150,0.08);border:1px solid rgba(0,200,150,0.25);color:#00C896">Trend favors longs. Monitor for continuation.</div>
+                </div>
+              </div>
+            </div>
+            <div class="mic-hist">
+              <div class="mh-lbl">10-MIN SIGNAL HISTORY</div>
+              <div class="mh-chips">
+                <div class="mh-chip" style="background:rgba(0,200,150,0.14);border-color:rgba(0,200,150,0.45);color:#00C896">↑68%</div>
+                <div class="mh-chip" style="background:rgba(0,200,150,0.14);border-color:rgba(0,200,150,0.45);color:#00C896">↑70%</div>
+                <div class="mh-chip" style="background:rgba(255,215,0,0.14);border-color:rgba(255,215,0,0.45);color:#FFD700">→51%</div>
+                <div class="mh-chip" style="background:rgba(0,200,150,0.14);border-color:rgba(0,200,150,0.45);color:#00C896">↑66%</div>
+                <div class="mh-chip now" style="background:rgba(0,200,150,0.2);border-color:#00C896;color:#00C896;outline-color:rgba(0,200,150,0.6)">↑72%</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card: QQQ (red / BEAR) -->
+          <div class="mic">
+            <div class="mic-strip" style="background:#FF4C4C"></div>
+            <div class="mic-hdr">
+              <span class="mic-sym">QQQ</span>
+              <span class="mic-prc">715.31</span>
+              <span class="mic-chg-dn">▼-0.28%</span>
+              <span class="mic-htf-dn">D↓</span>
+              <span class="mic-pat" style="background:rgba(255,76,76,0.14);border:1px solid rgba(255,76,76,0.35);color:#FF4C4C">BREAKDOWN</span>
+              <span class="mic-det">→ Detail</span>
+            </div>
+            <div class="mic-body">
+              <div class="mic-tl">
+                <div class="mic-circle" style="background:#FF4C4C;box-shadow:0 0 14px rgba(255,76,76,0.5)"></div>
+                <span class="mic-lbl" style="color:#FF4C4C">BEAR</span>
+              </div>
+              <div class="mic-info">
+                <div>
+                  <div class="mi-lbl">MARKET READ</div>
+                  <div class="mi-val" style="color:#FF4C4C">▼ DOWNTREND</div>
+                </div>
+                <div>
+                  <div class="mi-lbl">TREND · CONFIDENCE</div>
+                  <div class="mi-row">
+                    <span style="font-size:0.66rem;font-weight:700;color:#ef5350;white-space:nowrap">↓ DOWN · 68%</span>
+                    <div class="mi-bar"><div class="mi-fill" style="width:68%;background:#ef5350"></div></div>
+                    <span class="mi-age" style="color:#FFD700">~5m</span>
+                  </div>
+                </div>
+                <div>
+                  <div class="mi-lbl">VOLUME</div>
+                  <div class="mi-row" style="gap:5px">
+                    <span style="font-size:0.65rem;font-weight:700;color:#ef5350">0.8×</span>
+                    <span class="mi-vbadge" style="background:rgba(239,83,80,0.12);border:1px solid rgba(239,83,80,0.3);color:#ef5350">LOW</span>
+                  </div>
+                </div>
+                <div>
+                  <div class="mi-lbl">SIGNAL REASON</div>
+                  <div style="font-size:0.62rem;font-weight:600;color:#c0c0c0;margin-bottom:3px">Bearish Momentum</div>
+                  <div class="mi-action" style="background:rgba(255,76,76,0.08);border:1px solid rgba(255,76,76,0.25);color:#FF4C4C">Sellers in control. Avoid longs, watch for relief.</div>
+                </div>
+              </div>
+            </div>
+            <div class="mic-hist">
+              <div class="mh-lbl">10-MIN SIGNAL HISTORY</div>
+              <div class="mh-chips">
+                <div class="mh-chip" style="background:rgba(255,76,76,0.14);border-color:rgba(255,76,76,0.45);color:#FF4C4C">↓71%</div>
+                <div class="mh-chip" style="background:rgba(255,76,76,0.14);border-color:rgba(255,76,76,0.45);color:#FF4C4C">↓75%</div>
+                <div class="mh-chip" style="background:rgba(255,76,76,0.14);border-color:rgba(255,76,76,0.45);color:#FF4C4C">↓68%</div>
+                <div class="mh-chip" style="background:rgba(255,215,0,0.14);border-color:rgba(255,215,0,0.45);color:#FFD700">→52%</div>
+                <div class="mh-chip now" style="background:rgba(255,76,76,0.2);border-color:#FF4C4C;color:#FF4C4C;outline-color:rgba(255,76,76,0.6)">↓68%</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card: NVDA (yellow / COILING) -->
+          <div class="mic">
+            <div class="mic-strip" style="background:#FFD700"></div>
+            <div class="mic-hdr">
+              <span class="mic-sym">NVDA</span>
+              <span class="mic-prc">214.30</span>
+              <span style="font-size:0.64rem;font-weight:600;color:#9e9e9e">+0.05%</span>
+              <span class="mic-htf-dn">D↓</span>
+              <span class="mic-pat" style="background:rgba(255,215,0,0.14);border:1px solid rgba(255,215,0,0.35);color:#FFD700">BUILDUP</span>
+              <span class="mic-det">→ Detail</span>
+            </div>
+            <div class="mic-body">
+              <div class="mic-tl">
+                <div class="mic-circle" style="background:#FFD700;box-shadow:0 0 14px rgba(255,215,0,0.5)"></div>
+                <span class="mic-lbl" style="color:#FFD700">COILING</span>
+              </div>
+              <div class="mic-info">
+                <div>
+                  <div class="mi-lbl">MARKET READ</div>
+                  <div class="mi-val" style="color:#FFD700">◆ COILING</div>
+                </div>
+                <div>
+                  <div class="mi-lbl">TREND · CONFIDENCE</div>
+                  <div class="mi-row">
+                    <span style="font-size:0.66rem;font-weight:700;color:#64748b;white-space:nowrap">→ UP · 51%</span>
+                    <div class="mi-bar"><div class="mi-fill" style="width:51%;background:#64748b"></div></div>
+                    <span class="mi-age" style="color:#ef5350">~8m</span>
+                  </div>
+                </div>
+                <div>
+                  <div class="mi-lbl">VOLUME</div>
+                  <div class="mi-row" style="gap:5px">
+                    <span style="font-size:0.65rem;font-weight:700;color:#64748b">1.1×</span>
+                    <span class="mi-vbadge" style="background:rgba(100,116,139,0.12);border:1px solid rgba(100,116,139,0.3);color:#64748b">NORMAL</span>
+                  </div>
+                </div>
+                <div>
+                  <div class="mi-lbl">SIGNAL REASON</div>
+                  <div style="font-size:0.62rem;font-weight:600;color:#c0c0c0;margin-bottom:3px">Compression</div>
+                  <div class="mi-action" style="background:rgba(251,146,60,0.08);border:1px solid rgba(251,146,60,0.25);color:#fb923c">Range-bound. Wait for breakout confirmation.</div>
+                </div>
+              </div>
+            </div>
+            <div class="mic-hist">
+              <div class="mh-lbl">10-MIN SIGNAL HISTORY</div>
+              <div class="mh-chips">
+                <div class="mh-chip" style="background:rgba(255,215,0,0.14);border-color:rgba(255,215,0,0.45);color:#FFD700">→54%</div>
+                <div class="mh-chip" style="background:rgba(0,200,150,0.14);border-color:rgba(0,200,150,0.45);color:#00C896">↑61%</div>
+                <div class="mh-chip" style="background:rgba(255,215,0,0.14);border-color:rgba(255,215,0,0.45);color:#FFD700">→50%</div>
+                <div class="mh-chip" style="background:rgba(255,215,0,0.14);border-color:rgba(255,215,0,0.45);color:#FFD700">→52%</div>
+                <div class="mh-chip now" style="background:rgba(255,215,0,0.2);border-color:#FFD700;color:#FFD700;outline-color:rgba(255,215,0,0.6)">→51%</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card: AAPL (red / BEAR) -->
+          <div class="mic">
+            <div class="mic-strip" style="background:#FF4C4C"></div>
+            <div class="mic-hdr">
+              <span class="mic-sym">AAPL</span>
+              <span class="mic-prc">308.40</span>
+              <span class="mic-chg-dn">▼-1.21%</span>
+              <span class="mic-htf-dn">D↓</span>
+              <span class="mic-pat" style="background:rgba(255,76,76,0.14);border:1px solid rgba(255,76,76,0.35);color:#FF4C4C">REJECTION</span>
+              <span class="mic-det">→ Detail</span>
+            </div>
+            <div class="mic-body">
+              <div class="mic-tl">
+                <div class="mic-circle" style="background:#FF4C4C;box-shadow:0 0 14px rgba(255,76,76,0.5)"></div>
+                <span class="mic-lbl" style="color:#FF4C4C">BEAR</span>
+              </div>
+              <div class="mic-info">
+                <div>
+                  <div class="mi-lbl">MARKET READ</div>
+                  <div class="mi-val" style="color:#FF4C4C">▼ DOWNTREND</div>
+                </div>
+                <div>
+                  <div class="mi-lbl">TREND · CONFIDENCE</div>
+                  <div class="mi-row">
+                    <span style="font-size:0.66rem;font-weight:700;color:#ef5350;white-space:nowrap">↓ DOWN · 78%</span>
+                    <div class="mi-bar"><div class="mi-fill" style="width:78%;background:#ef5350"></div></div>
+                    <span class="mi-age" style="color:#22c55e">~1m</span>
+                  </div>
+                </div>
+                <div>
+                  <div class="mi-lbl">VOLUME</div>
+                  <div class="mi-row" style="gap:5px">
+                    <span style="font-size:0.65rem;font-weight:700;color:#00C896">2.1×</span>
+                    <span class="mi-vbadge" style="background:rgba(0,200,150,0.12);border:1px solid rgba(0,200,150,0.3);color:#00C896">HIGH</span>
+                  </div>
+                </div>
+                <div>
+                  <div class="mi-lbl">SIGNAL REASON</div>
+                  <div style="font-size:0.62rem;font-weight:600;color:#c0c0c0;margin-bottom:3px">Bearish Breakdown</div>
+                  <div class="mi-action" style="background:rgba(255,76,76,0.08);border:1px solid rgba(255,76,76,0.25);color:#FF4C4C">Strong selling with volume. Short bias confirmed.</div>
+                </div>
+              </div>
+            </div>
+            <div class="mic-hist">
+              <div class="mh-lbl">10-MIN SIGNAL HISTORY</div>
+              <div class="mh-chips">
+                <div class="mh-chip" style="background:rgba(255,76,76,0.14);border-color:rgba(255,76,76,0.45);color:#FF4C4C">↓72%</div>
+                <div class="mh-chip" style="background:rgba(255,76,76,0.14);border-color:rgba(255,76,76,0.45);color:#FF4C4C">↓80%</div>
+                <div class="mh-chip" style="background:rgba(255,76,76,0.14);border-color:rgba(255,76,76,0.45);color:#FF4C4C">↓75%</div>
+                <div class="mh-chip" style="background:rgba(255,76,76,0.14);border-color:rgba(255,76,76,0.45);color:#FF4C4C">↓82%</div>
+                <div class="mh-chip now" style="background:rgba(255,76,76,0.2);border-color:#FF4C4C;color:#FF4C4C;outline-color:rgba(255,76,76,0.6)">↓78%</div>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- end mock-icg -->
+      </div><!-- end mock-insight-area -->
+    </div><!-- end mock-body -->
+  </div><!-- end mock-wrap -->
+</div><!-- end container -->
+
+<!-- FEATURES -->
+<section id="features">
+  <div class="container">
+    <div class="section-label">Capabilities</div>
+    <h2 class="section-title">Everything you need<br>to read the tape</h2>
+    <p class="section-sub">A complete intraday toolkit — from raw price data to AI-generated trade signals.</p>
+    <div class="features-grid">
+      <div class="feat-card">
+        <div class="feat-icon fi-purple">📡</div>
+        <h3>Real-Time WebSocket Feed</h3>
+        <p>Prices, indicators, and AI signals update every 1 minute via persistent WebSocket. Auto-reconnects on disconnect. Zero page refreshes needed.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon fi-green">🤖</div>
+        <h3>AI UP / DOWN Predictions</h3>
+        <p>33-rule weighted evaluator scores EMA, VWAP, RSI, volume, candle structure, ORB, S/R, and multi-indicator confluence signals. Returns a directional prediction with confidence score, per-rule explanations, and optional LLM plain-English commentary.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon fi-orange">📊</div>
+        <h3>Candlestick Chart + Overlays</h3>
+        <p>Lightweight Charts v5 with session background shading (pre-market, regular, after-hours), ORB, VWAP, PM/PD price lines, and swing markers.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon fi-blue">📐</div>
+        <h3>20+ Technical Indicators</h3>
+        <p>EMA 9/21/50 with spread %, RSI-14 (Wilder), RVOL / volume state, VWAP position &amp; motion, daily trend, POC, ORB 15m, premarket H/L, previous day H/L, support &amp; resistance, swing H/L, 9-signal confluence score, plus candle structure, pattern detection, and volume character from the candle context engine.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon fi-red">📋</div>
+        <h3>12-Ticker Watchlist</h3>
+        <p>SPY, QQQ, SPX, AAPL, GOOGL, NVDA, TSLA, AMZN, MSFT, PLTR, META, AMD — all scheduled every 60 seconds. Add any ticker temporarily during a session; the list resets on refresh to keep performance predictable.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon fi-red">🚨</div>
+        <h3>Composite Alert System</h3>
+        <p>Five tiered pattern detectors (T1–T3): POWER_TREND, STRUCTURE_BREAK, VWAP_RESET, EXHAUSTION_REVERSAL, and POC_MAGNET. Alerts are batch-displayed per refresh cycle with tier filters and a manual ↻ Refresh button. Deduped within 15 minutes.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon fi-blue">🔬</div>
+        <h3>Tape Read + Candle Context</h3>
+        <p>Candle context engine analyses the last 30 minutes of 5-min bars: detects 9 candlestick patterns (Engulfing, Hammer, Doji, InsideBar, NR7, rejection wicks), price structure (UPTREND/DOWNTREND/COILING/CHOPPY), volume character, and key-level proximity. Click <strong>Generate</strong> for a 3-line LLM senior-trader narrative covering tape environment, dominant setup, and next probable move.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon fi-gold">↔</div>
+        <h3>Resizable Panels</h3>
+        <p>Drag the divider between the watchlist and detail view, or between the chart and indicators sidebar, to set your preferred workspace layout.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon fi-purple">📲</div>
+        <h3>Progressive Web App (PWA)</h3>
+        <p>Install Picker on any device via Share → Add to Home Screen (iOS) or Chrome's install prompt (Android). Launches in standalone mode — no browser chrome, no URL bar. App shell loads instantly even offline.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon fi-orange">🔔</div>
+        <h3>Web Push Notifications</h3>
+        <p>Subscribe once by tapping 🔕 in the Alerts panel. Tier 1 (ACT) and Tier 2 (WATCH) composite alerts are delivered via Web Push (VAPID) — directly to your OS notification tray even when the app is closed or the screen is off. Tap any notification to jump straight to the alert ticker's chart.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon fi-purple">🗓</div>
+        <h3>InsightGrid — Pattern Detection</h3>
+        <p>Main dashboard shows a per-ticker insight card for all 12 symbols. Each card runs a live pattern engine (Breakout, Fakeout, Reversal, Rejection, Bounce, Continuation, Buildup, Chop Zone) and displays the current pattern label, signal age (~Nm), HTF daily bias (D↑/D↓), and 10-step history strip. Works on both desktop and mobile.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon fi-green">📊</div>
+        <h3>Macro Index Alignment Banner</h3>
+        <p>A sticky row above the insight cards shows SPY · QQQ · SPX daily trend with an alignment label — Macro Tailwind ↑, Macro Headwind ↓, Lean Bullish, Lean Bearish, or Index Conflict ⚠. Instantly contextualises every individual stock signal against the macro backdrop.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon fi-orange">✔</div>
+        <h3>Signal Context Layer</h3>
+        <p>Every card shows volume confirmation (rvol ×, HIGH/LOW/NORMAL), signal age in minutes (green = fresh, red = stale), and HTF daily bias tag. A “STALE” badge flags signals older than 8 minutes. A built-in <strong>? Help</strong> guide explains every element for new users.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon fi-blue">⏱</div>
+        <h3>Multi-Timeframe (2m / 5m / 15m)</h3>
+        <p>Switch the entire dashboard between three intraday timeframes with a single click in the header (<strong>2m / 5m / 15m</strong>). All candles, indicators, predictions, composite alerts, and the WebSocket stream re-subscribe automatically. Refresh cadence adapts per TF (1 min / 2 min / 5 min) and your choice is remembered in localStorage. Backend stores per-TF candles separately, so every layer stays internally consistent.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon fi-green">💰</div>
+        <h3>AWS Cost Dashboard</h3>
+        <p>Click the green <strong>$ Cost</strong> button to see a live AWS spend snapshot: month-to-date spend with vs-last-month delta, projected month-end total, budget limit with utilization bar &amp; alert threshold marker, 7-day daily average, top services breakdown, and severity-tagged budget alerts. Powered by AWS Cost Explorer + Budgets APIs via boto3, with a 1-hour in-process cache to keep CE billing minimal ($0.01/req).</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section id="how" style="background:var(--bg);">
+  <div class="container">
+    <div class="section-label">Architecture</div>
+    <h2 class="section-title">How it works</h2>
+    <p class="section-sub">Five focused layers, each doing one job well.</p>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h4>Data Fetch</h4>
+        <p>yfinance pulls 5-day / 5-min OHLCV bars every 1 minute for every tracked ticker.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h4>Indicators</h4>
+        <p>Python computes EMA, RSI-14, RVOL, VWAP, trend, ORB, session levels, S/R, volume profile, EMA spread, and 9-signal confluence score in-process.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h4>AI + Composite Alerts</h4>
+        <p>33-rule engine fires UP/DOWN + confidence. 5 composite detectors check for POWER_TREND, STRUCTURE_BREAK, VWAP_RESET, EXHAUSTION_REVERSAL, and POC_MAGNET patterns.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <h4>Broadcast</h4>
+        <p>FastAPI WebSocket pushes price, indicator delta, and prediction to all connected clients instantly.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">5</div>
+        <h4>Visualise</h4>
+        <p>React + Zustand merges the stream into local state. Charts and panels update live, no polling.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- AI SIGNALS -->
+<section id="signals">
+  <div class="container">
+    <div class="section-label">Composite Alert Patterns</div>
+    <h2 class="section-title">High-conviction setups, explained</h2>
+    <p class="section-sub">Five tiered composite detectors fire only when multiple indicator conditions align simultaneously — no noise, just high-probability setups.</p>
+    <div class="signals-grid">
+      <div class="signal-card">
+        <div class="sig-dir up">⇕ T1 · POWER_TREND</div>
+        <h4>Power Trend</h4>
+        <p>Full EMA stack aligned (9&gt;21&gt;50 or 9&lt;21&lt;50), price on the correct side of VWAP, and daily trend confirming direction. The highest-conviction setup in the system.</p>
+      </div>
+      <div class="signal-card">
+        <div class="sig-dir dn">⇕ T1 · STRUCTURE_BREAK</div>
+        <h4>Structure Break</h4>
+        <p>Price breaks through a key support or resistance level with volume confirmation. Signals a potential trend continuation or acceleration after the break.</p>
+      </div>
+      <div class="signal-card">
+        <div class="sig-dir up">⇕ T2 · VWAP_RESET</div>
+        <h4>VWAP Reset</h4>
+        <p>Price reclaims or loses VWAP with EMA structure confirming direction. Institutions repositioning around fair value — typically kicks off a directional move.</p>
+      </div>
+      <div class="signal-card">
+        <div class="sig-dir dn">⇕ T2 · EXHAUSTION_REVERSAL</div>
+        <h4>Exhaustion Reversal</h4>
+        <p>RSI extreme (overbought / oversold) with price near a swing high/low and volume drying up. Momentum is exhausted — fade the move and expect a reversal.</p>
+      </div>
+      <div class="signal-card">
+        <div class="sig-dir up">⇕ T3 · POC_MAGNET</div>
+        <h4>POC Magnet</h4>
+        <p>Price is trading away from the session Point of Control (highest-volume node). The POC acts as a gravitational anchor — expect price to revert toward it over the next few bars.</p>
+      </div>
+      <div class="signal-card">
+        <div class="sig-dir up">↑↓ 33-RULE AI ENGINE</div>
+        <h4>Per-bar Predictions</h4>
+        <p>Every 5-minute bar also runs the full 33-rule weighted evaluator: EMA stack, VWAP position &amp; motion, RSI, momentum, candle structure, ORB, S/R, and confluence — scoring an UP/DOWN with confidence.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- STACK -->
+<section id="stack">
+  <div class="container" style="text-align:center;">
+    <div class="section-label">Tech Stack</div>
+    <h2 class="section-title">Built with production-grade tools</h2>
+    <div class="stack-grid">
+      <div class="stack-chip"><div class="sc-dot" style="background:#4fc3f7"></div>React 19 + TypeScript</div>
+      <div class="stack-chip"><div class="sc-dot" style="background:#646cff"></div>Vite 8 + pnpm</div>
+      <div class="stack-chip"><div class="sc-dot" style="background:#a78bfa"></div>Zustand 5</div>
+      <div class="stack-chip"><div class="sc-dot" style="background:#34d399"></div>Lightweight Charts v5</div>
+      <div class="stack-chip"><div class="sc-dot" style="background:#f97316"></div>FastAPI 0.115</div>
+      <div class="stack-chip"><div class="sc-dot" style="background:#3b82f6"></div>Python 3.11 + uvicorn</div>
+      <div class="stack-chip"><div class="sc-dot" style="background:#fbbf24"></div>yfinance 1.3</div>
+      <div class="stack-chip"><div class="sc-dot" style="background:#9ca3af"></div>SQLite + aiosqlite</div>
+      <div class="stack-chip"><div class="sc-dot" style="background:#ec4899"></div>WebSocket (native)</div>
+      <div class="stack-chip"><div class="sc-dot" style="background:#10b981"></div>pandas + numpy</div>
+      <div class="stack-chip"><div class="sc-dot" style="background:#818cf8"></div>Gemini · GPT · Claude · Ollama</div>
+      <div class="stack-chip"><div class="sc-dot" style="background:#06b6d4"></div>httpx (async HTTP)</div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section id="cta">
+  <div class="container">
+    <h2>Ready to read the tape?</h2>
+    <p>Open the live dashboard and start monitoring your watchlist in real time.</p>
+    <div class="cta-btns">
+      <a class="btn-primary" href="/app">Launch Picker →</a>
+      <a class="btn-outline" href="https://nysepicker.duckdns.org/api/health" target="_blank">API Health Check</a>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <span>© 2026 Picker — NYSE Intraday Dashboard</span>
+  <span>Built with FastAPI · React · yfinance · Deployed on AWS EC2</span>
+  <a href="architecture.html">Architecture →</a>
+  <a href="https://nysepicker.duckdns.org" target="_blank">nysepicker.duckdns.org →</a>
+</footer>
+
+</body>
+</html>

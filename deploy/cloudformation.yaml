@@ -1,0 +1,473 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  Picker NYSE Dashboard - EC2 t2.micro + Nginx + systemd backend + Lambda auto
+  start/stop schedule. Deploy in us-east-1 for free tier eligibility (~$1.73/month
+  for Elastic IP idle hours; $0 without it).
+
+# ==============================================================================
+# Parameters
+# ==============================================================================
+Parameters:
+
+  KeyPairName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: >-
+      Name of an existing EC2 key pair for SSH access.
+      Create one first: EC2 Console -> Key Pairs -> Create key pair (RSA, .pem).
+
+  SSHAccessCIDR:
+    Type: String
+    Description: >-
+      Your public IP in CIDR notation for SSH (e.g. 203.0.113.5/32).
+      Find it at: https://checkip.amazonaws.com - append /32.
+    AllowedPattern: '^(\d{1,3}\.){3}\d{1,3}/\d{1,2}$'
+    Default: '0.0.0.0/0'
+    ConstraintDescription: Must be a valid IPv4 CIDR block (e.g. 203.0.113.5/32)
+
+  RepoURL:
+    Type: String
+    Description: HTTPS clone URL of the picker-cloud GitHub repository.
+    Default: 'https://github.com/GirishChavan-DigitalUS/picker-cloud.git'
+    AllowedPattern: '^https://.+\.git$'
+    ConstraintDescription: Must be an HTTPS Git URL ending in .git
+
+  RepoBranch:
+    Type: String
+    Description: Git branch to deploy.
+    Default: main
+
+  LLMProvider:
+    Type: String
+    Description: >-
+      LLM provider for AI trade commentary. Leave empty to disable.
+      Options: gemini (free tier), openai, anthropic, ollama.
+    Default: 'gemini'
+
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: >-
+      VPC to deploy into. Find it: VPC Console -> Your VPCs -> copy the VPC ID
+      (e.g. vpc-0abc1234def56789a). Must have an Internet Gateway attached.
+
+  SubnetId:
+    Type: AWS::EC2::Subnet::Id
+    Description: >-
+      Public subnet within the selected VPC. Find it: VPC Console -> Subnets.
+      Choose a public subnet (one with a route to an Internet Gateway).
+      Enable "Auto-assign public IPv4" on the subnet, or the Elastic IP handles it.
+
+  LLMAPIKey:
+    Type: String
+    Description: >-
+      API key for the chosen LLM provider. Leave empty if not using AI commentary.
+      Stored in /opt/picker/.env on the EC2 instance. Value is masked in the console.
+    Default: ''
+    NoEcho: true
+
+  VapidPrivateKey:
+    Type: String
+    Description: >-
+      VAPID private key for Web Push notifications (base64url-encoded EC P-256 scalar).
+      Generate once with: node gen_vapid.cjs (see repo). Leave empty to disable push.
+      Stored in /opt/picker/.env. Value is masked in the console.
+    Default: ''
+    NoEcho: true
+
+  VapidPublicKey:
+    Type: String
+    Description: >-
+      VAPID public key for Web Push notifications (base64url-encoded uncompressed point).
+      Must match VapidPrivateKey. Safe to expose publicly.
+    Default: ''
+
+  VapidContactEmail:
+    Type: String
+    Description: >-
+      Contact email sent in the VAPID JWT sub claim (e.g. admin@nysepicker.duckdns.org).
+    Default: 'admin@nysepicker.duckdns.org'
+
+# ==============================================================================
+# Console grouping / labels
+# ==============================================================================
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Network
+        Parameters: [VpcId, SubnetId]
+      - Label:
+          default: EC2 Access
+        Parameters: [KeyPairName, SSHAccessCIDR]
+      - Label:
+          default: Application
+        Parameters: [RepoURL, RepoBranch]
+      - Label:
+          default: AI Commentary (Optional)
+        Parameters: [LLMProvider, LLMAPIKey]
+      - Label:
+          default: Push Notifications (Optional)
+        Parameters: [VapidPrivateKey, VapidPublicKey, VapidContactEmail]
+    ParameterLabels:
+      VpcId:             { default: VPC ID }
+      SubnetId:          { default: Public Subnet ID }
+      KeyPairName:       { default: EC2 Key Pair Name }
+      SSHAccessCIDR:     { default: Your SSH IP (CIDR) }
+      RepoURL:           { default: GitHub Repository URL }
+      RepoBranch:        { default: Branch }
+      LLMProvider:       { default: LLM Provider }
+      LLMAPIKey:         { default: LLM API Key }
+      VapidPrivateKey:   { default: VAPID Private Key }
+      VapidPublicKey:    { default: VAPID Public Key }
+      VapidContactEmail: { default: VAPID Contact Email }
+
+# ==============================================================================
+# Resources
+# ==============================================================================
+Resources:
+
+  # ----------------------------------------------------------------------------
+  # Security Group
+  # ----------------------------------------------------------------------------
+  PickerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Picker NYSE Dashboard - HTTP public + SSH from admin IP only
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - Description: HTTP (IPv4) - public dashboard
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - Description: HTTP (IPv6) - public dashboard
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIpv6: '::/0'
+        - Description: HTTPS (IPv4) - secure dashboard
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+        - Description: HTTPS (IPv6) - secure dashboard
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIpv6: '::/0'
+        - Description: SSH - admin IP only
+          IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref SSHAccessCIDR
+      Tags:
+        - { Key: Name,    Value: picker-sg }
+        - { Key: Project, Value: picker }
+
+  # ----------------------------------------------------------------------------
+  # IAM Role for EC2 (CloudWatch Logs access)
+  # ----------------------------------------------------------------------------
+  PickerEC2Role:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: picker-ec2-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { Service: ec2.amazonaws.com }
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+      Policies:
+        - PolicyName: picker-cost-readonly
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: CostExplorerRead
+                Effect: Allow
+                Action:
+                  - ce:GetCostAndUsage
+                  - ce:GetCostForecast
+                  - ce:GetDimensionValues
+                Resource: '*'
+              - Sid: BudgetsRead
+                Effect: Allow
+                Action:
+                  - budgets:DescribeBudgets
+                  - budgets:DescribeNotificationsForBudget
+                Resource: '*'
+              - Sid: StsIdentity
+                Effect: Allow
+                Action:
+                  - sts:GetCallerIdentity
+                Resource: '*'
+      Tags:
+        - { Key: Name,    Value: picker-ec2-role }
+        - { Key: Project, Value: picker }
+
+  PickerEC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: picker-ec2-profile
+      Roles: [!Ref PickerEC2Role]
+
+  # ----------------------------------------------------------------------------
+  # EC2 Instance — t2.micro, Amazon Linux 2023, 8 GB gp3
+  # ----------------------------------------------------------------------------
+  PickerEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.micro
+      # SSM dynamic reference — resolves to latest AL2023 AMI at deploy time
+      ImageId: '{{resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64}}'
+      KeyName: !Ref KeyPairName
+      IamInstanceProfile: !Ref PickerEC2InstanceProfile
+      SubnetId: !Ref SubnetId
+      SecurityGroupIds:
+        - !GetAtt PickerSecurityGroup.GroupId
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeType: gp3
+            VolumeSize: 8
+            DeleteOnTermination: true
+            Encrypted: true
+      UserData:
+        Fn::Base64:
+          Fn::Sub: |
+            #!/usr/bin/env bash
+            set -euo pipefail
+            exec > >(tee /var/log/picker-bootstrap.log) 2>&1
+
+            echo "=== Picker CloudFormation Bootstrap: $(date) ==="
+
+            # ── 1. Install git ─────────────────────────────────────────────────
+            dnf install -y git
+            APP_DIR="/opt/picker"
+            REPO_URL="${RepoURL}"
+            BRANCH="${RepoBranch}"
+            LLM_PROVIDER="${LLMProvider}"
+            LLM_API_KEY="${LLMAPIKey}"
+            VAPID_PRIVATE_KEY="${VapidPrivateKey}"
+            VAPID_PUBLIC_KEY="${VapidPublicKey}"
+            VAPID_CONTACT_EMAIL="${VapidContactEmail}"
+
+            # Export for bootstrap.sh (it checks these env vars)
+            export PICKER_REPO_URL="$REPO_URL"
+            export PICKER_BRANCH="$BRANCH"
+
+            # ── 3. Clone repository ────────────────────────────────────────────
+            mkdir -p "$APP_DIR"
+            git clone -b "$BRANCH" "$REPO_URL" "$APP_DIR"
+
+            # ── 4. Run full bootstrap ──────────────────────────────────────────
+            #   Installs: python3.11, nginx, nodejs20, pnpm, venv, deps,
+            #             systemd service, nginx config, frontend build (if src/)
+            bash "$APP_DIR/deploy/bootstrap.sh"
+
+            # ── 5. Append LLM config to .env (only if parameters provided) ────
+            ENV_FILE="$APP_DIR/.env"
+            if [ -n "$LLM_PROVIDER" ]; then
+                echo "LLM_PROVIDER=$LLM_PROVIDER" >> "$ENV_FILE"
+            fi
+            if [ -n "$LLM_API_KEY" ]; then
+                echo "LLM_API_KEY=$LLM_API_KEY" >> "$ENV_FILE"
+            fi
+            if [ -n "$VAPID_PRIVATE_KEY" ]; then
+                echo "VAPID_PRIVATE_KEY=$VAPID_PRIVATE_KEY" >> "$ENV_FILE"
+            fi
+            if [ -n "$VAPID_PUBLIC_KEY" ]; then
+                echo "VAPID_PUBLIC_KEY=$VAPID_PUBLIC_KEY" >> "$ENV_FILE"
+            fi
+            if [ -n "$VAPID_CONTACT_EMAIL" ]; then
+                echo "VAPID_CONTACT_EMAIL=$VAPID_CONTACT_EMAIL" >> "$ENV_FILE"
+            fi
+
+            # ── 6. Restart backend to apply updated .env ───────────────────────
+            systemctl restart picker-backend
+
+            echo "=== Bootstrap complete: $(date) ==="
+      Tags:
+        - { Key: Name,    Value: picker-ec2 }
+        - { Key: Project, Value: picker }
+
+  # ----------------------------------------------------------------------------
+  # Elastic IP
+  # ----------------------------------------------------------------------------
+  PickerElasticIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - { Key: Name,    Value: picker-eip }
+        - { Key: Project, Value: picker }
+
+  PickerEIPAssociation:
+    Type: AWS::EC2::EIPAssociation
+    Properties:
+      EIP: !Ref PickerElasticIP
+      InstanceId: !Ref PickerEC2Instance
+
+  # ----------------------------------------------------------------------------
+  # IAM Role for Lambda — least-privilege EC2 start/stop on this instance only
+  # ----------------------------------------------------------------------------
+  PickerLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: picker-lambda-ec2-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { Service: lambda.amazonaws.com }
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        # Basic execution: write logs to CloudWatch
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: picker-ec2-startstop
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:StartInstances
+                  - ec2:StopInstances
+                # Scoped to this specific instance only
+                Resource: !Sub 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/${PickerEC2Instance}'
+      Tags:
+        - { Key: Name,    Value: picker-lambda-ec2-role }
+        - { Key: Project, Value: picker }
+
+  # ----------------------------------------------------------------------------
+  # Lambda — Start EC2 at 7:45 AM ET
+  # ----------------------------------------------------------------------------
+  PickerStartLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: picker-ec2-start
+      Description: Start Picker EC2 instance at 7:45 AM ET (scheduled via EventBridge)
+      Runtime: python3.12
+      Handler: index.lambda_handler
+      Role: !GetAtt PickerLambdaRole.Arn
+      Timeout: 10
+      MemorySize: 128
+      Environment:
+        Variables:
+          INSTANCE_ID: !Ref PickerEC2Instance
+      Code:
+        ZipFile: |
+          import os
+          import boto3
+
+          def lambda_handler(event, context):
+              instance_id = os.environ["INSTANCE_ID"]
+              ec2 = boto3.client("ec2")
+              ec2.start_instances(InstanceIds=[instance_id])
+              print(f"Started instance {instance_id}")
+              return {"statusCode": 200, "body": f"Started {instance_id}"}
+      Tags:
+        - { Key: Project, Value: picker }
+
+  # ----------------------------------------------------------------------------
+  # Lambda — Stop EC2 at 8:15 PM ET
+  # ----------------------------------------------------------------------------
+  PickerStopLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: picker-ec2-stop
+      Description: Stop Picker EC2 instance at 8:15 PM ET (scheduled via EventBridge)
+      Runtime: python3.12
+      Handler: index.lambda_handler
+      Role: !GetAtt PickerLambdaRole.Arn
+      Timeout: 10
+      MemorySize: 128
+      Environment:
+        Variables:
+          INSTANCE_ID: !Ref PickerEC2Instance
+      Code:
+        ZipFile: |
+          import os
+          import boto3
+
+          def lambda_handler(event, context):
+              instance_id = os.environ["INSTANCE_ID"]
+              ec2 = boto3.client("ec2")
+              ec2.stop_instances(InstanceIds=[instance_id])
+              print(f"Stopped instance {instance_id}")
+              return {"statusCode": 200, "body": f"Stopped {instance_id}"}
+      Tags:
+        - { Key: Project, Value: picker }
+
+  # ----------------------------------------------------------------------------
+  # EventBridge Rules — daily start/stop schedule (UTC, no DST adjustment)
+  #   Start:  11:45 UTC = 7:45 AM EDT  (6:45 AM EST in winter)
+  #   Stop:   00:15 UTC = 8:15 PM EDT  (7:15 PM EST in winter)
+  # ----------------------------------------------------------------------------
+  PickerStartEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: picker-ec2-start-schedule
+      Description: Start Picker EC2 at 7:45 AM ET (11:45 UTC) - every day
+      ScheduleExpression: 'cron(45 11 * * ? *)'
+      State: ENABLED
+      Targets:
+        - Id: picker-start-lambda-target
+          Arn: !GetAtt PickerStartLambda.Arn
+
+  PickerStopEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: picker-ec2-stop-schedule
+      Description: Stop Picker EC2 at 8:15 PM ET (00:15 UTC) - every day
+      ScheduleExpression: 'cron(15 0 * * ? *)'
+      State: ENABLED
+      Targets:
+        - Id: picker-stop-lambda-target
+          Arn: !GetAtt PickerStopLambda.Arn
+
+  PickerStartLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref PickerStartLambda
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt PickerStartEventRule.Arn
+
+  PickerStopLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref PickerStopLambda
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt PickerStopEventRule.Arn
+
+# ==============================================================================
+# Outputs — displayed in CloudFormation console after stack creation
+# ==============================================================================
+Outputs:
+
+  DashboardURL:
+    Description: Picker dashboard - open in browser
+    Value: !Sub 'http://${PickerElasticIP.PublicIp}'
+
+  HealthCheckURL:
+    Description: Backend health check (returns {"status":"ok"} when ready)
+    Value: !Sub 'http://${PickerElasticIP.PublicIp}/api/health'
+
+  ElasticIP:
+    Description: Stable Elastic IP address - bookmark this
+    Value: !GetAtt PickerElasticIP.PublicIp
+
+  InstanceId:
+    Description: EC2 Instance ID
+    Value: !Ref PickerEC2Instance
+
+  SSHCommand:
+    Description: SSH into the instance (replace <key.pem> with your key file path)
+    Value: !Sub 'ssh -i <key.pem> ec2-user@${PickerElasticIP.PublicIp}'
+
+  BootstrapLog:
+    Description: Check bootstrap progress on the instance
+    Value: 'sudo cat /var/log/picker-bootstrap.log'

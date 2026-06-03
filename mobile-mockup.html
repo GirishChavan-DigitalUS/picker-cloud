@@ -1,0 +1,1032 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Picker — Mobile Layout Mockup (PWA)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0d0d0d;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 32px 16px;
+    gap: 40px;
+    min-height: 100vh;
+  }
+  h1 { color: #94a3b8; font-size: 0.85rem; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; }
+  .scene-label {
+    color: #64748b;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 8px;
+    text-align: center;
+  }
+  .scene { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+
+  /* ── Phone frame ── */
+  .phone {
+    width: 390px;
+    height: 844px;
+    background: #111827;
+    border-radius: 44px;
+    border: 2px solid #374151;
+    box-shadow: 0 0 0 6px #1f2937, 0 32px 80px rgba(0,0,0,0.8);
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+  /* Notch */
+  .phone::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 50%; transform: translateX(-50%);
+    width: 120px; height: 30px;
+    background: #0a0e17;
+    border-radius: 0 0 20px 20px;
+    z-index: 100;
+  }
+
+  /* ── Status bar ── */
+  .status-bar {
+    height: 44px;
+    padding: 12px 24px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 10;
+  }
+  .status-time { color: #f1f5f9; font-size: 0.8rem; font-weight: 600; }
+  .status-icons { display: flex; gap: 5px; align-items: center; color: #f1f5f9; font-size: 0.7rem; }
+
+  /* ── App header ── */
+  .app-header {
+    height: 52px;
+    background: #0f172a;
+    border-bottom: 1px solid #1e293b;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    flex-shrink: 0;
+  }
+  .app-title { color: #f1f5f9; font-size: 0.9rem; font-weight: 700; }
+  .header-right { display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; overflow: hidden; }
+  .hdr-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px;
+    border-radius: 5px;
+    font-size: 0.85rem; font-weight: 700;
+    line-height: 1; cursor: pointer;
+    flex-shrink: 0;
+  }
+  .hdr-icon-info { background: rgba(124,77,255,0.10); border: 1px solid rgba(124,77,255,0.40); color: #a78bfa; }
+  .hdr-icon-help { background: rgba(251,146,60,0.10); border: 1px solid rgba(251,146,60,0.40); color: #fb923c; }
+  .hdr-icon-cost { background: rgba(34,197,94,0.10);  border: 1px solid rgba(34,197,94,0.40);  color: #22c55e; }
+  .ws-dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 6px #22c55e; }
+  .ws-dot.off { background: #ef4444; box-shadow: 0 0 6px #ef4444; }
+  .alert-btn {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    color: #94a3b8;
+    font-size: 0.75rem;
+    padding: 5px 10px;
+    cursor: pointer;
+    position: relative;
+  }
+  .badge {
+    position: absolute;
+    top: -5px; right: -5px;
+    background: #ef4444;
+    color: #fff;
+    font-size: 0.55rem;
+    font-weight: 700;
+    border-radius: 50%;
+    width: 16px; height: 16px;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* ── Ticker tab bar ── */
+  .ticker-bar {
+    background: #0f172a;
+    border-bottom: 1px solid #1e293b;
+    padding: 8px 12px;
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    flex-shrink: 0;
+    scrollbar-width: none;
+  }
+  .ticker-bar::-webkit-scrollbar { display: none; }
+  .ticker-chip {
+    flex-shrink: 0;
+    padding: 6px 10px;
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid transparent;
+    white-space: nowrap;
+  }
+  .ticker-chip.default { background: #1e293b; color: #94a3b8; border-color: #334155; }
+  .ticker-chip.up { background: #052e16; color: #4ade80; border-color: #166534; }
+  .ticker-chip.down { background: #450a0a; color: #f87171; border-color: #7f1d1d; }
+  .ticker-chip.selected { background: #1d4ed8; color: #fff; border-color: #3b82f6; }
+  .ticker-chip .price { font-size: 0.62rem; opacity: 0.7; margin-left: 3px; }
+  .add-chip {
+    flex-shrink: 0;
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    background: #1e293b;
+    border: 1px dashed #475569;
+    color: #64748b;
+    font-size: 1rem;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    align-self: center;
+  }
+
+  /* ── Main content area ── */
+  .app-content {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    background: #0f172a;
+  }
+
+  /* ── View screens ── */
+  .screen {
+    position: absolute;
+    inset: 0;
+    overflow-y: auto;
+    padding: 16px;
+    display: none;
+    scrollbar-width: none;
+  }
+  .screen.active { display: block; }
+  .screen::-webkit-scrollbar { display: none; }
+
+  /* Overview screen (no ticker selected) */
+  .overview-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    height: 100%;
+    color: #475569;
+    text-align: center;
+  }
+  .overview-icon { font-size: 2.5rem; }
+  .overview-text { font-size: 0.85rem; }
+  .overview-hint { font-size: 0.72rem; color: #334155; }
+
+  /* Grid view (overview cards) */
+  .cards-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .card {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    padding: 12px;
+    cursor: pointer;
+  }
+  .card-ticker { font-size: 0.8rem; font-weight: 700; color: #f1f5f9; margin-bottom: 2px; }
+  .card-name { font-size: 0.62rem; color: #64748b; margin-bottom: 8px; }
+  .card-price { font-size: 1.1rem; font-weight: 700; }
+  .card-price.up { color: #4ade80; }
+  .card-price.down { color: #f87171; }
+  .card-change { font-size: 0.65rem; margin-top: 1px; }
+  .card-change.up { color: #4ade80; }
+  .card-change.down { color: #f87171; }
+  .card-ai {
+    margin-top: 8px;
+    font-size: 0.62rem;
+    background: #0f172a;
+    border-radius: 6px;
+    padding: 4px 6px;
+    color: #818cf8;
+  }
+
+  /* Detail screen */
+  .detail-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .back-btn {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    color: #94a3b8;
+    font-size: 0.75rem;
+    padding: 6px 10px;
+    cursor: pointer;
+  }
+  .detail-ticker { font-size: 1.1rem; font-weight: 800; color: #f1f5f9; }
+  .detail-name { font-size: 0.72rem; color: #64748b; }
+  .detail-price-row {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 14px;
+    padding: 12px;
+    background: #1e293b;
+    border-radius: 10px;
+    border: 1px solid #334155;
+  }
+  .detail-price { font-size: 1.8rem; font-weight: 800; color: #4ade80; }
+  .detail-change { font-size: 0.8rem; color: #4ade80; }
+
+  /* Chart placeholder */
+  .chart-placeholder {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    height: 200px;
+    margin-bottom: 12px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .chart-toolbar {
+    padding: 8px 12px;
+    display: flex;
+    gap: 6px;
+    border-bottom: 1px solid #334155;
+  }
+  .timeframe-btn {
+    font-size: 0.65rem;
+    padding: 3px 8px;
+    border-radius: 5px;
+    border: 1px solid #475569;
+    color: #94a3b8;
+    background: transparent;
+    cursor: pointer;
+  }
+  .timeframe-btn.selected { background: #1d4ed8; color: #fff; border-color: #3b82f6; }
+  .chart-body {
+    flex: 1;
+    padding: 8px;
+    position: relative;
+    overflow: hidden;
+  }
+  /* Fake candlestick SVG */
+  .chart-svg { width: 100%; height: 100%; }
+
+  /* Indicator pills */
+  .indicator-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+  .indicator-pill {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 0.68rem;
+  }
+  .pill-label { color: #64748b; margin-bottom: 2px; }
+  .pill-value { color: #f1f5f9; font-weight: 600; }
+  .pill-value.bull { color: #4ade80; }
+  .pill-value.bear { color: #f87171; }
+
+  /* AI section */
+  .section-title {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 8px;
+  }
+  .ai-card {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 12px;
+  }
+  .ai-signal {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .signal-badge {
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: #052e16;
+    color: #4ade80;
+    border: 1px solid #166534;
+  }
+  .signal-badge.bear {
+    background: #450a0a;
+    color: #f87171;
+    border-color: #7f1d1d;
+  }
+  .ai-commentary {
+    font-size: 0.72rem;
+    color: #94a3b8;
+    line-height: 1.5;
+  }
+
+  /* ── Bottom sheet (Alerts) ── */
+  .bottom-sheet-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 50;
+    display: none;
+  }
+  .bottom-sheet-overlay.active { display: block; }
+  .bottom-sheet {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    background: #111827;
+    border-top: 1px solid #1e293b;
+    border-radius: 20px 20px 0 0;
+    padding: 0 0 16px;
+    max-height: 70%;
+    display: flex;
+    flex-direction: column;
+  }
+  .sheet-handle-row {
+    display: flex;
+    justify-content: center;
+    padding: 10px;
+    flex-shrink: 0;
+  }
+  .sheet-handle {
+    width: 40px; height: 4px;
+    background: #334155;
+    border-radius: 2px;
+  }
+  .sheet-header {
+    padding: 0 16px 10px;
+    border-bottom: 1px solid #1e293b;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  .sheet-title { font-size: 0.9rem; font-weight: 700; color: #f1f5f9; }
+  .sheet-close {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 50%;
+    color: #94a3b8;
+    width: 28px; height: 28px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    font-size: 0.75rem;
+  }
+  .sheet-body { overflow-y: auto; padding: 12px 16px; flex: 1; scrollbar-width: none; }
+  .alert-item {
+    display: flex;
+    gap: 10px;
+    padding: 10px;
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 10px;
+    margin-bottom: 8px;
+    align-items: flex-start;
+  }
+  .alert-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 4px; flex-shrink: 0; }
+  .alert-dot.bull { background: #4ade80; }
+  .alert-dot.bear { background: #f87171; }
+  .alert-dot.warn { background: #fbbf24; }
+  .alert-content { flex: 1; }
+  .alert-ticker { font-size: 0.72rem; font-weight: 700; color: #f1f5f9; }
+  .alert-msg { font-size: 0.68rem; color: #94a3b8; margin-top: 2px; line-height: 1.4; }
+  .alert-time { font-size: 0.6rem; color: #475569; margin-top: 3px; }
+
+  /* ── Home bar ── */
+  .home-bar {
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background: #0f172a;
+  }
+  .home-indicator {
+    width: 120px; height: 4px;
+    background: #334155;
+    border-radius: 2px;
+  }
+
+  /* ── Navigation buttons (outside phone) ── */
+  .nav-buttons {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 8px;
+  }
+  .nav-btn {
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: 1px solid #334155;
+    background: #1e293b;
+    color: #94a3b8;
+    font-size: 0.72rem;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .nav-btn:hover, .nav-btn.active {
+    background: #1d4ed8;
+    border-color: #3b82f6;
+    color: #fff;
+  }
+
+  /* Page title */
+  .page-title {
+    color: #f1f5f9;
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin-bottom: 4px;
+    text-align: center;
+  }
+  .page-sub {
+    color: #64748b;
+    font-size: 0.78rem;
+    text-align: center;
+    margin-bottom: 24px;
+  }
+
+  /* Annotations */
+  .annotations {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 8px;
+    max-width: 390px;
+    width: 100%;
+  }
+  .annotation {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.7rem;
+    color: #64748b;
+  }
+  .ann-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* ── PWA install banner ── */
+  .install-banner {
+    position: absolute;
+    bottom: 28px; left: 12px; right: 12px;
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 14px;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    z-index: 60;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+  }
+  .install-icon {
+    width: 38px; height: 38px;
+    background: #0d0d0d;
+    border: 1.5px solid #00e5a0;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem; font-weight: 800; color: #00e5a0;
+    flex-shrink: 0;
+  }
+  .install-text { flex: 1; }
+  .install-title { font-size: 0.78rem; font-weight: 700; color: #f1f5f9; }
+  .install-sub   { font-size: 0.65rem; color: #64748b; margin-top: 1px; }
+  .install-btn {
+    background: #818cf8;
+    border: none;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 6px 12px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .install-dismiss {
+    background: none;
+    border: none;
+    color: #475569;
+    font-size: 0.85rem;
+    cursor: pointer;
+    flex-shrink: 0;
+    padding: 0 2px;
+  }
+
+  /* ── Push permission dialog ── */
+  .permission-dialog {
+    position: absolute;
+    top: 100px; left: 20px; right: 20px;
+    background: #1e293b;
+    border: 1px solid #475569;
+    border-radius: 14px;
+    padding: 18px 16px 14px;
+    z-index: 70;
+    box-shadow: 0 16px 40px rgba(0,0,0,0.7);
+    display: none;
+  }
+  .permission-dialog.active { display: block; }
+  .perm-icon { font-size: 1.6rem; margin-bottom: 8px; text-align: center; }
+  .perm-title { font-size: 0.88rem; font-weight: 700; color: #f1f5f9; text-align: center; margin-bottom: 4px; }
+  .perm-sub { font-size: 0.68rem; color: #94a3b8; text-align: center; margin-bottom: 14px; line-height: 1.4; }
+  .perm-buttons { display: flex; gap: 8px; }
+  .perm-allow {
+    flex: 1; padding: 9px; border: none; border-radius: 8px;
+    background: #818cf8; color: #fff; font-size: 0.75rem; font-weight: 700; cursor: pointer;
+  }
+  .perm-deny {
+    flex: 1; padding: 9px; border: 1px solid #334155; border-radius: 8px;
+    background: transparent; color: #94a3b8; font-size: 0.75rem; cursor: pointer;
+  }
+
+  /* ── Push notification toast ── */
+  .push-toast {
+    position: absolute;
+    top: 52px; left: 10px; right: 10px;
+    background: #1e293b;
+    border: 1px solid #475569;
+    border-radius: 14px;
+    padding: 12px 14px;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    z-index: 80;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.7);
+    animation: slideDown 0.3s ease;
+  }
+  @keyframes slideDown {
+    from { transform: translateY(-20px); opacity: 0; }
+    to   { transform: translateY(0);     opacity: 1; }
+  }
+  .toast-app-icon {
+    width: 36px; height: 36px; border-radius: 9px;
+    background: #0d0d0d; border: 1.5px solid #00e5a0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.9rem; font-weight: 800; color: #00e5a0; flex-shrink: 0;
+  }
+  .toast-content { flex: 1; }
+  .toast-app-name { font-size: 0.58rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.06em; }
+  .toast-title { font-size: 0.78rem; font-weight: 700; color: #f1f5f9; margin: 2px 0; }
+  .toast-body  { font-size: 0.67rem; color: #94a3b8; }
+  .toast-time  { font-size: 0.6rem; color: #475569; flex-shrink: 0; align-self: flex-start; margin-top: 2px; }
+
+  /* ── Bell toggle in header ── */
+  .bell-btn {
+    background: transparent;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    color: #94a3b8;
+    font-size: 0.78rem;
+    padding: 5px 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .bell-btn.active {
+    border-color: #22c55e;
+    color: #22c55e;
+    background: #052e1633;
+  }
+</style>
+</head>
+<body>
+
+<div class="page-title">Picker — Mobile Layout</div>
+<div class="page-sub">Interactive mockup · PWA + Web Push · Click the buttons below each phone to switch views</div>
+
+<!-- ═══════════════════════════════════════════════
+     PHONE 1 — Dashboard (ticker list / grid view)
+════════════════════════════════════════════════ -->
+<div class="scene">
+  <div class="scene-label">Screen 1 — Dashboard (No ticker selected)</div>
+  <div class="phone" id="phone1">
+    <!-- Status bar -->
+    <div class="status-bar">
+      <span class="status-time">9:41</span>
+      <div class="status-icons">
+        <span>●●●</span><span>WiFi</span><span>🔋</span>
+      </div>
+    </div>
+    <!-- Header -->
+    <div class="app-header">
+      <span class="app-title">Picker 📈</span>
+      <div class="header-right">
+        <div class="ws-dot"></div>
+        <span class="hdr-icon hdr-icon-info" title="About Picker">ℹ</span>
+        <span class="hdr-icon hdr-icon-help" title="How to read the signals">?</span>
+        <span class="hdr-icon hdr-icon-cost" title="AWS cost dashboard">$</span>
+        <button class="bell-btn" id="bell1" onclick="toggleBell('bell1')" title="Enable push notifications">🔕</button>
+        <button class="alert-btn" onclick="toggleSheet('phone1')">🔔
+          <span class="badge">3</span>
+        </button>
+      </div>
+    </div>
+    <!-- Ticker tab bar -->
+    <div class="ticker-bar">
+      <div class="ticker-chip up">AAPL <span class="price">$211</span></div>
+      <div class="ticker-chip down">TSLA <span class="price">$182</span></div>
+      <div class="ticker-chip up">NVDA <span class="price">$134</span></div>
+      <div class="ticker-chip down">AMZN <span class="price">$208</span></div>
+      <div class="ticker-chip up">MSFT <span class="price">$421</span></div>
+      <div class="ticker-chip up">GOOG <span class="price">$172</span></div>
+      <div class="add-chip">+</div>
+    </div>
+    <!-- Content -->
+    <div class="app-content">
+      <!-- Grid view -->
+      <div class="screen active" id="p1-grid" style="padding:12px;">
+        <div class="cards-grid">
+          <div class="card" onclick="showDetail('phone1')">
+            <div class="card-ticker">AAPL</div>
+            <div class="card-name">Apple Inc.</div>
+            <div class="card-price up">$211.42</div>
+            <div class="card-change up">▲ +1.24%</div>
+            <div class="card-ai">🤖 LONG · 78% conf</div>
+          </div>
+          <div class="card">
+            <div class="card-ticker">TSLA</div>
+            <div class="card-name">Tesla Inc.</div>
+            <div class="card-price down">$182.18</div>
+            <div class="card-change down">▼ -2.11%</div>
+            <div class="card-ai">🤖 SHORT · 65% conf</div>
+          </div>
+          <div class="card">
+            <div class="card-ticker">NVDA</div>
+            <div class="card-name">NVIDIA Corp.</div>
+            <div class="card-price up">$134.56</div>
+            <div class="card-change up">▲ +3.40%</div>
+            <div class="card-ai">🤖 LONG · 82% conf</div>
+          </div>
+          <div class="card">
+            <div class="card-ticker">AMZN</div>
+            <div class="card-name">Amazon.com</div>
+            <div class="card-price down">$208.34</div>
+            <div class="card-change down">▼ -0.88%</div>
+            <div class="card-ai">🤖 HOLD · 51% conf</div>
+          </div>
+          <div class="card">
+            <div class="card-ticker">MSFT</div>
+            <div class="card-name">Microsoft</div>
+            <div class="card-price up">$421.10</div>
+            <div class="card-change up">▲ +0.55%</div>
+            <div class="card-ai">🤖 LONG · 71% conf</div>
+          </div>
+          <div class="card">
+            <div class="card-ticker">GOOG</div>
+            <div class="card-name">Alphabet Inc.</div>
+            <div class="card-price up">$172.84</div>
+            <div class="card-change up">▲ +1.10%</div>
+            <div class="card-ai">🤖 LONG · 68% conf</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Detail view (hidden initially) -->
+      <div class="screen" id="p1-detail">
+        <div class="detail-header">
+          <button class="back-btn" onclick="hideDetail('phone1')">← Back</button>
+          <div>
+            <div class="detail-ticker">AAPL</div>
+            <div class="detail-name">Apple Inc.</div>
+          </div>
+        </div>
+        <div class="detail-price-row">
+          <div class="detail-price">$211.42</div>
+          <div class="detail-change">▲ +$2.58 (+1.24%)</div>
+        </div>
+        <!-- Chart -->
+        <div class="chart-placeholder">
+          <div class="chart-toolbar">
+            <button class="timeframe-btn">2m</button>
+            <button class="timeframe-btn selected">5m</button>
+            <button class="timeframe-btn">15m</button>
+          </div>
+          <div class="chart-body">
+            <svg class="chart-svg" viewBox="0 0 340 130">
+              <!-- Fake candles -->
+              <line x1="0" y1="100" x2="340" y2="100" stroke="#1e293b" stroke-width="1"/>
+              <line x1="0" y1="65" x2="340" y2="65" stroke="#1e293b" stroke-width="1"/>
+              <line x1="0" y1="30" x2="340" y2="30" stroke="#1e293b" stroke-width="1"/>
+              <!-- Green candles -->
+              <g fill="#22c55e" stroke="#22c55e">
+                <rect x="10" y="75" width="8" height="20"/><line x1="14" y1="70" x2="14" y2="97"/><line x1="14" y1="95" x2="14" y2="100"/>
+                <rect x="25" y="68" width="8" height="22"/><line x1="29" y1="63" x2="29" y2="90"/><line x1="29" y1="88" x2="29" y2="95"/>
+                <rect x="55" y="62" width="8" height="18"/><line x1="59" y1="57" x2="59" y2="82"/><line x1="59" y1="80" x2="59" y2="88"/>
+                <rect x="70" y="58" width="8" height="20"/><line x1="74" y1="53" x2="74" y2="78"/><line x1="74" y1="76" x2="74" y2="84"/>
+                <rect x="100" y="52" width="8" height="22"/><line x1="104" y1="47" x2="104" y2="74"/><line x1="104" y1="72" x2="104" y2="80"/>
+                <rect x="130" y="45" width="8" height="18"/><line x1="134" y1="40" x2="134" y2="63"/><line x1="134" y1="61" x2="134" y2="69"/>
+                <rect x="160" y="40" width="8" height="20"/><line x1="164" y1="35" x2="164" y2="60"/><line x1="164" y1="58" x2="164" y2="66"/>
+                <rect x="205" y="36" width="8" height="16"/><line x1="209" y1="31" x2="209" y2="52"/><line x1="209" y1="50" x2="209" y2="56"/>
+                <rect x="235" y="33" width="8" height="18"/><line x1="239" y1="28" x2="239" y2="51"/><line x1="239" y1="49" x2="239" y2="56"/>
+                <rect x="280" y="28" width="8" height="20"/><line x1="284" y1="23" x2="284" y2="48"/><line x1="284" y1="46" x2="284" y2="52"/>
+                <rect x="310" y="24" width="8" height="18"/><line x1="314" y1="19" x2="314" y2="42"/><line x1="314" y1="40" x2="314" y2="46"/>
+              </g>
+              <!-- Red candles -->
+              <g fill="#ef4444" stroke="#ef4444">
+                <rect x="40" y="68" width="8" height="18"/><line x1="44" y1="63" x2="44" y2="86"/><line x1="44" y1="84" x2="44" y2="92"/>
+                <rect x="85" y="58" width="8" height="16"/><line x1="89" y1="53" x2="89" y2="74"/><line x1="89" y1="72" x2="89" y2="80"/>
+                <rect x="115" y="50" width="8" height="20"/><line x1="119" y1="45" x2="119" y2="70"/><line x1="119" y1="68" x2="119" y2="76"/>
+                <rect x="145" y="43" width="8" height="16"/><line x1="149" y1="38" x2="149" y2="59"/><line x1="149" y1="57" x2="149" y2="64"/>
+                <rect x="175" y="38" width="8" height="18"/><line x1="179" y1="33" x2="179" y2="56"/><line x1="179" y1="54" x2="179" y2="61"/>
+                <rect x="190" y="36" width="8" height="14"/><line x1="194" y1="31" x2="194" y2="50"/><line x1="194" y1="48" x2="194" y2="55"/>
+                <rect x="220" y="34" width="8" height="16"/><line x1="224" y1="29" x2="224" y2="50"/><line x1="224" y1="48" x2="224" y2="55"/>
+                <rect x="250" y="30" width="8" height="18"/><line x1="254" y1="25" x2="254" y2="48"/><line x1="254" y1="46" x2="254" y2="53"/>
+                <rect x="265" y="28" width="8" height="14"/><line x1="269" y1="23" x2="269" y2="42"/><line x1="269" y1="40" x2="269" y2="47"/>
+                <rect x="295" y="26" width="8" height="12"/><line x1="299" y1="21" x2="299" y2="38"/><line x1="299" y1="36" x2="299" y2="42"/>
+                <rect x="325" y="23" width="8" height="15"/><line x1="329" y1="18" x2="329" y2="38"/><line x1="329" y1="36" x2="329" y2="43"/>
+              </g>
+              <!-- EMA line -->
+              <polyline points="10,90 40,82 70,72 100,65 130,58 160,52 190,46 220,42 250,38 280,33 310,30 340,27" fill="none" stroke="#818cf8" stroke-width="1.5" opacity="0.7"/>
+              <!-- Price label -->
+              <text x="290" y="20" fill="#4ade80" font-size="9" font-family="sans-serif">$211.42</text>
+            </svg>
+          </div>
+        </div>
+        <!-- Indicators -->
+        <div class="section-title">Indicators</div>
+        <div class="indicator-row">
+          <div class="indicator-pill">
+            <div class="pill-label">RSI(14)</div>
+            <div class="pill-value bull">62.4</div>
+          </div>
+          <div class="indicator-pill">
+            <div class="pill-label">EMA 9/21</div>
+            <div class="pill-value bull">↑ Bull</div>
+          </div>
+          <div class="indicator-pill">
+            <div class="pill-label">VWAP</div>
+            <div class="pill-value bull">Above</div>
+          </div>
+          <div class="indicator-pill">
+            <div class="pill-label">Vol</div>
+            <div class="pill-value">1.2×avg</div>
+          </div>
+          <div class="indicator-pill">
+            <div class="pill-label">Trend</div>
+            <div class="pill-value bull">Strong ↑</div>
+          </div>
+          <div class="indicator-pill">
+            <div class="pill-label">S/R</div>
+            <div class="pill-value">$209/$213</div>
+          </div>
+        </div>
+        <!-- AI -->
+        <div class="section-title">AI Analysis</div>
+        <div class="ai-card">
+          <div class="ai-signal">
+            <span class="signal-badge">LONG</span>
+            <span style="color:#94a3b8;font-size:0.75rem;">78% confidence</span>
+          </div>
+          <div class="ai-commentary">Price holding above VWAP with bullish EMA crossover. RSI at 62 — momentum still healthy with room before overbought. Volume confirms institutional interest near the $210 support.</div>
+        </div>
+      </div>
+
+      <!-- Alerts bottom sheet -->
+      <div class="bottom-sheet-overlay" id="phone1-overlay" onclick="toggleSheet('phone1')">
+        <div class="bottom-sheet" onclick="event.stopPropagation()">
+          <div class="sheet-handle-row"><div class="sheet-handle"></div></div>
+          <div class="sheet-header">
+            <span class="sheet-title">🔔 Alerts (3)</span>
+            <button class="sheet-close" onclick="toggleSheet('phone1')">✕</button>
+          </div>
+          <div class="sheet-body">
+            <div class="alert-item">
+              <div class="alert-dot bull"></div>
+              <div class="alert-content">
+                <div class="alert-ticker">AAPL ⚡ Power Trend</div>
+                <div class="alert-msg">TIER 1 · EMA 9/21 bullish crossover confirmed. Price above VWAP. AI: 82% conf.</div>
+                <div class="alert-time">2 min ago</div>
+              </div>
+            </div>
+            <div class="alert-item">
+              <div class="alert-dot bear"></div>
+              <div class="alert-content">
+                <div class="alert-ticker">TSLA 🔓 Structure Break</div>
+                <div class="alert-msg">TIER 2 · Broke below key support $183.50. RVOL 1.8×. AI: 71% conf.</div>
+                <div class="alert-time">8 min ago</div>
+              </div>
+            </div>
+            <div class="alert-item">
+              <div class="alert-dot warn"></div>
+              <div class="alert-content">
+                <div class="alert-ticker">NVDA ↩ VWAP Reset</div>
+                <div class="alert-msg">TIER 2 · Pullback to VWAP in uptrend. EMA aligned. AI: 68% conf.</div>
+                <div class="alert-time">15 min ago</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Push permission dialog -->
+      <div class="permission-dialog" id="perm-dialog">
+        <div class="perm-icon">🔔</div>
+        <div class="perm-title">Enable Push Alerts?</div>
+        <div class="perm-sub">Get notified for Tier 1 &amp; 2 signals (Power Trend, Structure Break, VWAP Reset) even when the app is closed.</div>
+        <div class="perm-buttons">
+          <button class="perm-allow" onclick="grantPerm()">Allow</button>
+          <button class="perm-deny"  onclick="denyPerm()">Not now</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PWA install banner -->
+    <div class="install-banner" id="install-banner">
+      <div class="install-icon">P</div>
+      <div class="install-text">
+        <div class="install-title">Add Picker to Home Screen</div>
+        <div class="install-sub">Works offline · instant launch · push alerts</div>
+      </div>
+      <button class="install-btn" onclick="dismissInstall()">Install</button>
+      <button class="install-dismiss" onclick="dismissInstall()">✕</button>
+    </div>
+    <!-- Home bar -->
+    <div class="home-bar"><div class="home-indicator"></div></div>
+  </div>
+
+  <div class="nav-buttons">
+    <button class="nav-btn active" onclick="showView('p1-grid', this)">📊 Ticker Grid</button>
+    <button class="nav-btn" onclick="showDetail('phone1'); document.querySelectorAll('#phone1 ~ .nav-buttons .nav-btn').forEach(b=>b.classList.remove('active')); event.target.classList.add('active')">📈 Detail View</button>
+    <button class="nav-btn" onclick="toggleSheet('phone1')">🔔 Alerts Panel</button>
+    <button class="nav-btn" onclick="showInstall()">📲 Install Banner</button>
+    <button class="nav-btn" onclick="showPermDialog()">🔕→🔔 Push Perm</button>
+  </div>
+
+  <div class="annotations">
+    <div class="annotation">
+      <div class="ann-dot" style="background:#3b82f6"></div>
+      Horizontal scrollable ticker chips replace the fixed-width left panel
+    </div>
+    <div class="annotation">
+      <div class="ann-dot" style="background:#4ade80"></div>
+      Tap any card → full-screen detail with chart, indicators, AI analysis
+    </div>
+    <div class="annotation">
+      <div class="ann-dot" style="background:#fbbf24"></div>
+      Alerts open as bottom sheet overlay — Tier 1 &amp; 2 only trigger push notifications
+    </div>
+    <div class="annotation">
+      <div class="ann-dot" style="background:#22c55e"></div>
+      🔕 bell button in header → request permission → 🔔 subscribes to Web Push
+    </div>
+    <div class="annotation">
+      <div class="ann-dot" style="background:#818cf8"></div>
+      PWA install banner prompts home screen install — works offline after first load
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     PHONE 2 — Push notification received (app closed / background)
+════════════════════════════════════════════════ -->
+<div class="scene">
+  <div class="scene-label">Screen 2 — OS Push Notification (app in background)</div>
+  <div class="phone" id="phone2" style="background:#0a0e17;">
+    <!-- Status bar -->
+    <div class="status-bar">
+      <span class="status-time">10:14</span>
+      <div class="status-icons">
+        <span>●●●</span><span>WiFi</span><span>🔋</span>
+      </div>
+    </div>
+
+    <!-- Lock screen / home screen background -->
+    <div style="flex:1; position:relative; overflow:hidden; background: linear-gradient(160deg, #0a0e17 0%, #111827 100%);">
+
+      <!-- Lock screen clock -->
+      <div style="text-align:center; padding-top: 60px; margin-bottom: 32px;">
+        <div style="font-size: 3.2rem; font-weight: 200; color: #f1f5f9; letter-spacing:-1px;">10:14</div>
+        <div style="font-size: 0.8rem; color: #64748b;">Sunday, May 31</div>
+      </div>
+
+      <!-- Notification card -->
+      <div class="push-toast" id="push-toast-2" style="top:186px;">
+        <div class="toast-app-icon">P</div>
+        <div class="toast-content">
+          <div class="toast-app-name">Picker</div>
+          <div class="toast-title">▲ AAPL — Power Trend</div>
+          <div class="toast-body">Tier 1 · 82% confidence</div>
+        </div>
+        <div class="toast-time">now</div>
+      </div>
+
+      <!-- Second older notification -->
+      <div style="position:absolute; top:258px; left:10px; right:10px;
+                  background:#1e293b; border:1px solid #334155; border-radius:14px;
+                  padding:12px 14px; display:flex; gap:10px; align-items:flex-start; opacity:0.6;">
+        <div class="toast-app-icon" style="width:32px;height:32px;font-size:0.78rem;">P</div>
+        <div class="toast-content">
+          <div class="toast-app-name">Picker</div>
+          <div class="toast-title">▼ TSLA — Structure Break</div>
+          <div class="toast-body">Tier 1 · 74% confidence</div>
+        </div>
+        <div class="toast-time" style="font-size:0.6rem;color:#475569;">5m ago</div>
+      </div>
+
+      <!-- Swipe hint -->
+      <div style="position:absolute; bottom:40px; left:0; right:0; text-align:center;
+                  font-size:0.65rem; color:#334155;">
+        Tap to open Picker → navigates directly to AAPL chart
+      </div>
+    </div>
+
+    <div class="home-bar"><div class="home-indicator"></div></div>
+  </div>
+
+  <div class="nav-buttons">
+    <button class="nav-btn active">📲 Push Received</button>
+  </div>
+
+  <div class="annotations">
+    <div class="annotation">
+      <div class="ann-dot" style="background:#00e5a0"></div>
+      Push fires from backend via pywebpush + VAPID when Tier 1/2 alert is generated
+    </div>
+    <div class="annotation">
+      <div class="ann-dot" style="background:#818cf8"></div>
+      Notification arrives even when browser tab is closed or phone is locked
+    </div>
+    <div class="annotation">
+      <div class="ann-dot" style="background:#4ade80"></div>
+      Tapping the notification opens/focuses Picker and navigates to that ticker's chart
+    </div>
+  </div>
+</div>
+
+<script>
+  function toggleSheet(phoneId) {
+    const overlay = document.getElementById(phoneId + '-overlay');
+    overlay.classList.toggle('active');
+  }
+  function showDetail(phoneId) {
+    document.getElementById(phoneId.replace('phone','p') + '-grid').classList.remove('active');
+    document.getElementById(phoneId.replace('phone','p') + '-detail').classList.add('active');
+  }
+  function hideDetail(phoneId) {
+    document.getElementById(phoneId.replace('phone','p') + '-detail').classList.remove('active');
+    document.getElementById(phoneId.replace('phone','p') + '-grid').classList.add('active');
+  }
+  function showView(viewId, btn) {
+    const phone = btn.closest('.scene').querySelector('.phone');
+    phone.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(viewId).classList.add('active');
+    btn.closest('.nav-buttons').querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+  function toggleBell(id) {
+    const btn = document.getElementById(id);
+    const isActive = btn.classList.toggle('active');
+    btn.textContent = isActive ? '🔔' : '🔕';
+    if (!isActive) return;
+    // Show permission dialog when enabling
+    showPermDialog();
+  }
+  function showPermDialog() {
+    document.getElementById('perm-dialog').classList.add('active');
+  }
+  function grantPerm() {
+    document.getElementById('perm-dialog').classList.remove('active');
+    const bell = document.getElementById('bell1');
+    bell.classList.add('active');
+    bell.textContent = '🔔';
+  }
+  function denyPerm() {
+    document.getElementById('perm-dialog').classList.remove('active');
+    const bell = document.getElementById('bell1');
+    bell.classList.remove('active');
+    bell.textContent = '🔕';
+  }
+  function showInstall() {
+    document.getElementById('install-banner').style.display = 'flex';
+  }
+  function dismissInstall() {
+    document.getElementById('install-banner').style.display = 'none';
+  }
+</script>
+</body>
+</html>

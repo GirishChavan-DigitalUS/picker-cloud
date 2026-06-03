@@ -1,0 +1,41 @@
+# ── Secrets ─────────────────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# Nginx HTTP Basic Auth credential files (created on the server, never committed)
+.htpasswd
+.htpasswd-*
+deploy/.htpasswd
+deploy/.htpasswd-*
+
+# ── Python ───────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+venv/
+.venv/
+env/
+*.egg-info/
+dist/
+build/
+
+# ── Backend database ─────────────────────────────────────────────────────────
+backend/picker.db
+backend/*.db
+
+# ── Frontend build output ────────────────────────────────────────────────────
+frontend/dist/
+frontend/dist-ssr/
+frontend/node_modules/
+frontend/*.local
+
+# ── OS / editor ──────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+*.suo
+*.sw?

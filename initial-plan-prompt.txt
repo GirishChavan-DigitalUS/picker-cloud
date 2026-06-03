@@ -1,0 +1,207 @@
+You are a senior full-stack engineer and quant developer.
+
+Build a LOCAL web application that tracks 9 NYSE tickers during US market sessions (Pre-market, Regular, After-hours) and displays a dashboard with TradingView-style indicators and signals.
+
+Tickers:
+SPY, QQQ, SPX, AAPL, GOOGL, NVDA, TSLA, AMZN, MSFT
+
+========================================================
+1) Core Goal
+========================================================
+Create a live dashboard that:
+- Fetches OHLCV market data (1-min and 5-min) for each ticker
+- Aggregates to 5-min candles
+- Computes indicators used in TradingView (matching TradingView definitions as closely as possible)
+- Visualizes on TradingView charts
+- Runs AI evaluation every 5 minutes per ticker to estimate near-term direction
+
+IMPORTANT: This is for educational/analysis purposes only (not financial advice).
+
+========================================================
+2) TradingView Requirement (charts + indicators)
+========================================================
+Use TradingView components:
+- Use TradingView Lightweight Charts for rendering candlesticks
+- Overlay indicators on the chart like TradingView (EMA 9/21, VWAP, S/R lines, swing points)
+- Keep indicator calculations modular so they can be cross-validated with TradingView/PineScript formulas
+
+Optional:
+- Provide a way to export indicator series so a user can compare it to TradingView values.
+
+========================================================
+3) Indicator/Signal Requirements (computed on 5-min candles)
+========================================================
+Compute the following per ticker:
+
+A) EMA crossover
+- EMA 9 and EMA 21
+- signal: bullish when EMA9 > EMA21, bearish when EMA9 < EMA21
+- detect crossover events and timestamp them
+
+B) VWAP (session-aware)
+- Compute VWAP separately per session:
+  - pre-market session
+  - regular session
+  - after-hours
+- Determine:
+  - price above/below VWAP
+  - distance to VWAP
+  - moving toward VWAP vs moving away from VWAP
+  - track slope of VWAP
+
+C) Daily Trend
+- Determine bullish/bearish/sideways using:
+  - higher highs/higher lows (bullish)
+  - lower highs/lower lows (bearish)
+  - otherwise neutral
+- Provide also an ATR-based trend strength metric (optional)
+
+D) Volume Profile (session profile)
+- Compute session volume profile using 5-min candles (approximate is acceptable)
+- Identify POC (Point of Control) per session
+- Show POC as a line on chart and value in dashboard
+
+E) Support and Resistance (multi-timeframe)
+- Compute support/resistance across:
+  - daily
+  - 1h
+  - 5m
+Methods:
+- pivot-based (swing pivots)
+- optional: rolling high/low zones
+- store multiple levels with confidence/strength score
+
+F) Swing High/Low on 5-min
+- Identify swing highs/lows using pivot window (e.g., left=3 right=3)
+- Display most recent swing high and swing low + timestamps
+- Use these swings to derive S/R levels
+
+========================================================
+4) Dashboard UI Requirements
+========================================================
+Build a grid/table with one row per ticker showing:
+- current price
+- session label (pre/day/after)
+- EMA crossover state + last crossover time
+- VWAP position (above/below) + distance + toward/away indicator
+- daily trend (bull/bear/neutral)
+- session POC value
+- nearest support and nearest resistance
+- latest swing high and swing low (5m)
+
+Charts:
+- TradingView Lightweight Charts candlestick (5m)
+- Overlays: EMA9, EMA21, VWAP, S/R lines, swing markers
+- A per-ticker detail view when clicking a row
+
+Alerts panel:
+- stream alerts for events:
+  - EMA cross
+  - VWAP reclaim/breakdown
+  - break of support/resistance
+  - new swing high/low
+
+========================================================
+5) AI Evaluation Requirement (Every 5 minutes, no hallucination)
+========================================================
+Every 5 minutes, for EACH ticker, run an AI evaluation that predicts near-term direction for the next 1–3 five-minute candles.
+Direction output should be one of: UP, DOWN, NEUTRAL, or ABSTAIN.
+
+CRITICAL: “No hallucination” contract:
+- The AI is NOT allowed to use external facts, news, or assumptions.
+- The AI must ONLY use the computed feature set from this app (EMA, VWAP, trend, POC, S/R, swings, recent returns/volatility).
+- The AI must output structured JSON ONLY (no free-form narrative).
+- The AI must include the exact feature values it used.
+- If confidence is below a threshold or features are insufficient/inconsistent, output ABSTAIN.
+
+AI output JSON schema:
+{
+  "ticker": "AAPL",
+  "timestamp": "ISO-8601",
+  "horizon": "next_1_to_3_5m_candles",
+  "prediction": "UP|DOWN|NEUTRAL|ABSTAIN",
+  "confidence": 0.0-1.0,
+  "evidence": {
+    "ema9": number,
+    "ema21": number,
+    "ema_state": "BULLISH|BEARISH",
+    "vwap": number,
+    "price": number,
+    "price_vs_vwap": "ABOVE|BELOW",
+    "vwap_distance_pct": number,
+    "vwap_motion": "TOWARD|AWAY|FLAT",
+    "daily_trend": "BULL|BEAR|NEUTRAL",
+    "poc": number,
+    "nearest_support": number,
+    "nearest_resistance": number,
+    "last_swing_high": number,
+    "last_swing_low": number,
+    "recent_return_5m": number,
+    "recent_volatility": number
+  },
+  "rules_triggered": ["string", "..."], 
+  "notes": "optional short string, MUST be purely derived from evidence fields"
+}
+
+Implementation guidance:
+- Provide a rule-based baseline (deterministic) FIRST (so predictions are explainable and grounded).
+- Then optionally add an ML model layer (e.g., logistic regression / gradient boosting) trained locally from stored historical candles.
+- The AI evaluator must be able to run locally without internet access once data is present.
+- Always log predictions + outcomes for evaluation (accuracy metrics).
+
+========================================================
+6) Architecture Requirements
+========================================================
+Frontend:
+- React + Vite
+- TradingView Lightweight Charts for candlesticks and overlays
+- State management for live data (Zustand or Redux toolkit)
+- Responsive layout
+
+Backend:
+- Node.js (Express) OR Python (FastAPI)
+- Market data fetcher (free API acceptable) + session classifier
+- Local caching + storage:
+  - SQLite recommended for candles, signals, and predictions
+- WebSocket for pushing updates to UI (preferred); fallback polling OK
+
+Modules:
+- /indicators (ema, vwap, pivots, volume_profile, support_resistance, swings)
+- /signals (crossover, vwap_motion, sr_breaks)
+- /ai (rule_engine, optional_ml, evaluator_runner)
+- /api (REST endpoints + WebSocket)
+
+========================================================
+7) Deliverables to Generate
+========================================================
+Produce:
+1) Full project structure
+2) Backend API routes (candles, indicators, signals, predictions)
+3) Indicator calculation library (unit tested)
+4) TradingView chart components (candles + overlays)
+5) AI evaluator (rule-based baseline + JSON contract enforcement)
+6) Scheduler (runs every 5 minutes per ticker)
+7) Local setup instructions
+
+Make code clean, modular, production-ready, with sensible defaults.
+
+========================================================
+8) GOOGLE Gemini API
+========================================================
+API Key <REDACTED — set in /opt/picker/.env on EC2>
+Name pickerApp
+Project name projects/226538582778
+Project number 226538582778
+
+
+========================================================
+9) ALPACA Trading Data API
+========================================================
+https://paper-api.alpaca.markets/v2
+Key PK7FC2PAFFQR7KGSNTXYGTIMFX
+Secret H3iA4DEKGuLFdJqftiH9kHPprZXnP8QjrEQ5HGvhrKHB
+
+========================================================
+10) references
+========================================================
+https://app.thetahedge.io/

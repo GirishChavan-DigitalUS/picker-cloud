@@ -1,0 +1,376 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans);font-size:13px}
+.wrap{padding:1rem 0}
+.tabs{display:flex;gap:0;border-bottom:0.5px solid var(--color-border-tertiary);margin-bottom:1.5rem}
+.tab{padding:7px 16px;font-size:12px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;color:var(--color-text-secondary);background:none;border-top:none;border-left:none;border-right:none}
+.tab.active{color:var(--color-text-primary);border-bottom-color:var(--color-text-primary)}
+.tab:hover:not(.active){color:var(--color-text-primary)}
+.panel{display:none}.panel.active{display:block}
+.card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);margin-bottom:10px;overflow:hidden}
+.card-head{display:flex;align-items:flex-start;gap:10px;padding:12px 14px}
+.card-body{padding:0 14px 12px;border-top:0.5px solid var(--color-border-tertiary);margin-top:2px;padding-top:10px}
+.pill{font-size:10px;font-weight:500;padding:2px 8px;border-radius:99px;white-space:nowrap;flex-shrink:0;margin-top:1px}
+.pill-add{background:#EAF3DE;color:#27500A}
+.pill-mod{background:#FAEEDA;color:#633806}
+.pill-merge{background:#EEEDFE;color:#3C3489}
+.pill-fix{background:#FAECE7;color:#712B13}
+.pill-warn{background:#FCEBEB;color:#791F1F}
+.card-title{font-size:13px;font-weight:500;color:var(--color-text-primary);line-height:1.4}
+.card-sub{font-size:12px;color:var(--color-text-secondary);margin-top:2px;line-height:1.5}
+.detail{font-size:12px;color:var(--color-text-secondary);line-height:1.6}
+.detail strong{color:var(--color-text-primary);font-weight:500}
+.rule-ref{font-family:var(--font-mono);font-size:10px;background:var(--color-background-secondary);padding:1px 5px;border-radius:4px;color:var(--color-text-secondary)}
+.tag-row{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.weight-new{font-size:11px;color:var(--color-text-secondary)}
+.dir-up{color:#27500A;font-size:12px}
+.dir-dn{color:#791F1F;font-size:12px}
+.dir-both{color:#633806;font-size:12px}
+.summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:1.5rem}
+.stat-card{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:12px;text-align:center}
+.stat-num{font-size:22px;font-weight:500;color:var(--color-text-primary)}
+.stat-lbl{font-size:11px;color:var(--color-text-secondary);margin-top:2px}
+.divider{height:0.5px;background:var(--color-border-tertiary);margin:4px 0 8px}
+.risk-box{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:12px 14px;margin-bottom:10px}
+.risk-title{font-size:12px;font-weight:500;color:var(--color-text-primary);margin-bottom:6px}
+.risk-item{font-size:12px;color:var(--color-text-secondary);line-height:1.6;display:flex;gap:6px}
+.risk-item:before{content:"→";color:var(--color-text-tertiary);flex-shrink:0}
+</style>
+
+<div class="wrap">
+<h2 class="sr-only">Rule library audit: additions, modifications, merges, and risk flags for 33 trading signals</h2>
+
+<div class="summary-grid">
+  <div class="stat-card"><div class="stat-num" style="color:#27500A">8</div><div class="stat-lbl">New rules to add</div></div>
+  <div class="stat-card"><div class="stat-num" style="color:#633806">7</div><div class="stat-lbl">Rules to modify</div></div>
+  <div class="stat-card"><div class="stat-num" style="color:#3C3489">4</div><div class="stat-lbl">Merge candidates</div></div>
+  <div class="stat-card"><div class="stat-num" style="color:#791F1F">5</div><div class="stat-lbl">Risk / logic flags</div></div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('add')">Add (8)</button>
+  <button class="tab" onclick="switchTab('mod')">Modify (7)</button>
+  <button class="tab" onclick="switchTab('merge')">Merge (4)</button>
+  <button class="tab" onclick="switchTab('risk')">Risk flags (5)</button>
+</div>
+
+<div id="tab-add" class="panel active">
+
+  <div class="card">
+    <div class="card-head">
+      <span class="pill pill-add">ADD</span>
+      <div>
+        <div class="card-title"><span class="dir-up">↑</span> vwap_band_2sd_long &nbsp;<span class="weight-new">weight 1.4</span></div>
+        <div class="card-sub">Price tags or holds VWAP −2σ band — mean reversion long entry</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="detail">You have VWAP side and motion, but no band-touch rule. The ±2σ bands are the highest-probability mean-reversion trigger for options. <strong>Condition:</strong> price ≤ vwap_minus_2sd AND closes back above it within 1–2 bars. Works best paired with RSI &lt; 35. <strong>Why 1.4:</strong> band tags carry more conviction than simple below-VWAP positioning.</div>
+      <div class="tag-row"><span class="rule-ref">complements #7,8,9,10</span><span class="rule-ref">category: VWAP</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <span class="pill pill-add">ADD</span>
+      <div>
+        <div class="card-title"><span class="dir-dn">↓</span> vwap_band_2sd_short &nbsp;<span class="weight-new">weight 1.4</span></div>
+        <div class="card-sub">Price tags or rejects VWAP +2σ band — mean reversion short entry</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="detail">Mirror of above. <strong>Condition:</strong> price ≥ vwap_plus_2sd AND closes back below within 1–2 bars. Extremely effective on SPY, QQQ intraday. Best put-buying signal when RSI &gt; 65 simultaneously. <strong>Do not fire if:</strong> strong ORB breakout is in progress — trend overrides mean reversion.</div>
+      <div class="tag-row"><span class="rule-ref">complements #11,12</span><span class="rule-ref">category: VWAP</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <span class="pill pill-add">ADD</span>
+      <div>
+        <div class="card-title"><span class="dir-up">↑</span> orb_breakout_bull &nbsp;<span class="weight-new">weight 1.6</span></div>
+        <div class="card-sub">Price breaks and closes above ORB high with volume confirmation</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="detail">You have <span class="rule-ref">opening_range_hold</span> (#27) for pullbacks but no primary ORB breakout signal. This is a critical gap — ORB breakouts are the #1 intraday momentum setup for scalping. <strong>Condition:</strong> price closes above orb_high AND volume &gt; 1.3× avg AND time before 11:30 ET (breakouts after midday have lower follow-through). Weight 1.6 because it's a structural shift, not a price oscillation.</div>
+      <div class="tag-row"><span class="rule-ref">expands #27</span><span class="rule-ref">category: ORB</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <span class="pill pill-add">ADD</span>
+      <div>
+        <div class="card-title"><span class="dir-dn">↓</span> orb_breakdown_bear &nbsp;<span class="weight-new">weight 1.6</span></div>
+        <div class="card-sub">Price breaks and closes below ORB low with volume confirmation</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="detail">ORB downside mirror. <strong>Condition:</strong> price closes below orb_low AND volume &gt; 1.3× avg. High-conviction put entry. Time gate same: before 11:30 ET for best follow-through. After 11:30, reduce weight to 1.1 (lunch-hour chop)</div>
+      <div class="tag-row"><span class="rule-ref">pairs with orb_breakout_bull</span><span class="rule-ref">category: ORB</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <span class="pill pill-add">ADD</span>
+      <div>
+        <div class="card-title"><span class="dir-up">↑↓</span> rsi_hidden_divergence_bull / bear &nbsp;<span class="weight-new">weight 1.2</span></div>
+        <div class="card-sub">RSI makes higher low while price makes lower low (trend continuation, not reversal)</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="detail">Your RSI rules (#28,29) only cover overbought/oversold extremes. Hidden divergence is the <em>trend continuation</em> signal — more relevant for scalping with the trend. <strong>Bull hidden:</strong> price lower low + RSI higher low = dip-buy in uptrend. <strong>Bear hidden:</strong> price higher high + RSI lower high = short in downtrend. Gate this: only fire when EMA stack confirms same direction (#3 or #4).</div>
+      <div class="tag-row"><span class="rule-ref">extends #28,29</span><span class="rule-ref">category: RSI</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <span class="pill pill-add">ADD</span>
+      <div>
+        <div class="card-title"><span class="dir-both">↕</span> time_of_day_weight_modifier &nbsp;<span class="weight-new">multiplier rule</span></div>
+        <div class="card-sub">Scale signal weights by intraday session phase</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="detail">This is not a signal — it's a weight multiplier applied globally. <strong>09:30–10:00:</strong> ×1.3 (highest volatility, momentum signals more reliable). <strong>10:00–11:30:</strong> ×1.0 (base). <strong>11:30–13:30:</strong> ×0.6 (lunch chop — suppress weak signals). <strong>13:30–15:00:</strong> ×1.0 (afternoon trend resumes). <strong>15:00–16:00:</strong> ×1.2 (power hour, volume returns). This one change will significantly cut false signals during midday chop.</div>
+      <div class="tag-row"><span class="rule-ref">global modifier</span><span class="rule-ref">category: Context</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <span class="pill pill-add">ADD</span>
+      <div>
+        <div class="card-title"><span class="dir-both">↕</span> prior_day_levels &nbsp;<span class="weight-new">weight 1.2</span></div>
+        <div class="card-sub">Price approaching prior day High / Low / Close — key institutional reference levels</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="detail">You have POC and intraday S/R but no prior-day levels. PDH, PDL, and PDC (prior day high/low/close) are the most widely-watched levels by options market makers and algo desks. <strong>Bull:</strong> price holding above PDH after reclaiming it = continuation. <strong>Bear:</strong> price failing at PDH = reversal. <strong>Both:</strong> price at PDC = decision point. Draw all three as horizontal lines on chart.</div>
+      <div class="tag-row"><span class="rule-ref">complements #15,16</span><span class="rule-ref">category: S/R</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <span class="pill pill-add">ADD</span>
+      <div>
+        <div class="card-title"><span class="dir-both">↕</span> consecutive_candle_thrust &nbsp;<span class="weight-new">weight 1.3</span></div>
+        <div class="card-sub">3+ consecutive same-direction closes — trend thrust in progress</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="detail">Your momentum rule (#23,24) uses a single 5m return. Missing: sustained directional pressure across multiple bars. <strong>Condition:</strong> 3 or more consecutive bullish (or bearish) closes on 2-min candles. This is a thrust — enter on retracement, not chasing. Useful as a confidence multiplier: when thrust aligns with EMA stack + VWAP side, confluence score gets a meaningful boost.</div>
+      <div class="tag-row"><span class="rule-ref">extends #23,24</span><span class="rule-ref">category: Momentum</span></div>
+    </div>
+  </div>
+
+</div>
+
+<div id="tab-mod" class="panel">
+
+  <div class="card">
+    <div class="card-head">
+      <span class="pill pill-mod">MODIFY</span>
+      <div>
+        <div class="card-title">Rules #1 + #2 — ema_bullish / ema_bearish: reduce weight</div>
+        <div class="card-sub">Current 1.5 is too high given overlap with #3/#4</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="detail">EMA9 &gt; EMA21 (#1) and the full EMA9 &gt; EMA21 &gt; EMA50 stack (#3) both fire simultaneously in a trend — that's effectively double-counting. When both are true, the score gets 1.5 + 1.2 = 2.7 from EMA alone. <strong>Fix:</strong> Make #1/#2 only fire when #3/#4 are NOT satisfied (partial stack). Reduce #1/#2 weight to 1.0. #3/#4 stay at 1.2. This way full stack = 1.2 (not 2.7) and partial alignment = 1.0.</div>
+      <div class="tag-row"><span class="rule-ref">#1 weight: 1.5 → 1.0</span><span class="rule-ref">#2 weight: 1.5 → 1.0</span><span class="rule-ref">add mutual exclusion with #3/#4</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <span class="pill pill-mod">MODIFY</span>
+      <div>
+        <div class="card-title">Rule #19 — sr_support_bounce: tighten condition + raise weight</div>
+        <div class="card-sub">Current logic is too loose; requires volume confirmation</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="detail">A support bounce without volume is meaningless — it could be low-liquidity drift. <strong>Add required condition:</strong> volume ≥ 1.0× avg (at minimum, not dry). Also require: the previous bar touched or broke through support (not just "nearby"). This makes it a real bounce signal, not just proximity. <strong>Raise weight to 1.2</strong> (from 0.8) once the condition is tightened — you want this signal when it fires, it just needs better gates.</div>
+      <div class="tag-row"><span class="rule-ref">#19 weight: 0.8 → 1.2</span><span class="rule-ref">add: volume ≥ avg</span><span class="rule-ref">add: prior bar touched support</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <span class="pill pill-mod">MODIFY</span>
+      <div>
+        <div class="card-title">Rule #22 — volume_dry_up: split into two directional rules</div>
+        <div class="card-sub">BOTH direction creates scoring ambiguity</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="detail">A BOTH-direction rule at 0.6 adds to both bull_score and bear_score simultaneously, which effectively cancels out its own contribution in a net score system. It also makes confluence scoring muddier. <strong>Split into:</strong> volume_dry_up_in_downtrend (↑ UP, 0.7) — low volume on a bearish counter-bar in a bull trend = pullback exhaustion. volume_dry_up_in_uptrend (↓ DN, 0.7) — mirror. Gate each: only fires when daily_trend (#5/#6) aligns with the signal direction.</div>
+      <div class="tag-row"><span class="rule-ref">#22 → split into 2 directional rules</span><span class="rule-ref">each weight 0.7</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <span class="pill pill-mod">MODIFY</span>
+      <div>
+        <div class="card-title">Rules #23/#24 — momentum: change lookback from 5m return to 3-bar slope</div>
+        <div class="card-sub">Point-to-point return is noisy; slope is smoother</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="detail">recent_return_5m is a single data point comparison — susceptible to a single outlier candle. <strong>Replace with:</strong> linear regression slope over last 3 closed candles. Fire ↑ if slope &gt; +0.1%/bar, fire ↓ if slope &lt; -0.1%/bar. This smooths over one-bar anomalies and gives a cleaner "price is accelerating" vs "price had one big bar" distinction — critical for options delta plays.</div>
+      <div class="tag-row"><span class="rule-ref">#23/#24 condition update</span><span class="rule-ref">3-bar slope replaces 5m return</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <span class="pill pill-mod">MODIFY</span>
+      <div>
+        <div class="card-title">Rule #27 — opening_range_hold: add time gate + volume gate</div>
+        <div class="card-sub">ORB hold without volume is a trap setup</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="detail">Pulling back to ORB high and holding is a valid long entry <em>only if</em> volume on the pullback is declining (showing sellers are weak). <strong>Add conditions:</strong> pullback_volume &lt; 0.8× avg (dry pullback) AND time &lt; 12:00 ET. Also raise weight to 1.1 (from 0.7) — when this fires correctly it's one of the cleanest entries of the day. The low weight is currently underselling a high-quality setup.</div>
+      <div class="tag-row"><span class="rule-ref">#27 weight: 0.7 → 1.1</span><span class="rule-ref">add: pullback vol dry</span><span class="rule-ref">add: time gate</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <span class="pill pill-mod">MODIFY</span>
+      <div>
+        <div class="card-title">Rules #32/#33 — confluence threshold: raise from 6 to 5, add tier</div>
+        <div class="card-sub">6 independent signals rarely co-occur; add a moderate confluence tier</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="detail">With 33 rules, requiring 6 simultaneous is either too rare (misses entries) or double-counted via overlapping signals (false high confidence). <strong>Restructure as tiers:</strong> confluence_moderate_bull (score ≥ 4, weight 1.3), confluence_strong_bull (score ≥ 6, weight 1.8 — keep). Same for bear. The moderate tier will fire on setups that are genuinely good but not peak-confluence, giving you earlier entries with smaller size.</div>
+      <div class="tag-row"><span class="rule-ref">add: confluence_moderate_bull/bear at score ≥ 4, weight 1.3</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <span class="pill pill-mod">MODIFY</span>
+      <div>
+        <div class="card-title">Rules #28/#29 — RSI extremes: add "with rejection" condition</div>
+        <div class="card-sub">RSI touching 70 mid-trend is not a sell signal</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="detail">RSI &gt; 70 in a strong bull trend (EMA stack bullish, above VWAP) is not a reversal signal — it's confirmation of momentum. Firing a bearish signal here will constantly fight the trend. <strong>Add gate:</strong> #28 only fires if price closes BELOW the prior bar's low (showing actual rejection). #29 only fires if price closes ABOVE prior bar's high. Without price confirmation, suppress these signals entirely.</div>
+      <div class="tag-row"><span class="rule-ref">#28/#29: add price rejection confirmation gate</span></div>
+    </div>
+  </div>
+
+</div>
+
+<div id="tab-merge" class="panel">
+
+  <div class="card">
+    <div class="card-head">
+      <span class="pill pill-merge">MERGE</span>
+      <div>
+        <div class="card-title">Rules #7+#9 → vwap_bull_momentum / Rules #8+#10 → vwap_bear_momentum</div>
+        <div class="card-sub">Above VWAP + moving away = same signal, twice</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="detail">#7 (above VWAP, weight 1.0) and #9 (above VWAP + moving away, weight 1.0) both fire simultaneously when price is above and diverging — that's 2.0 weight from essentially one condition. <strong>Merge into:</strong> vwap_bull_momentum — fires when price is ABOVE VWAP AND motion == AWAY, weight 1.3. #7 alone (above but not moving away) stays as a low-weight context signal at 0.7. Same merge for #8+#10 on the bear side.</div>
+      <div class="tag-row"><span class="rule-ref">#7+#9 → 1 rule, weight 1.3 (active) + 0.7 (static)</span><span class="rule-ref">#8+#10 same</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <span class="pill pill-merge">MERGE</span>
+      <div>
+        <div class="card-title">Rules #11+#12 → vwap_mean_revert_signal (conditional)</div>
+        <div class="card-sub">Convergence toward VWAP = mean reversion, needs a gating condition</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="detail">#11 (above VWAP, converging = bearish) and #12 (below VWAP, converging = bullish) are fine conceptually but fire too freely. Converging toward VWAP in a trending market is just normal price behavior. <strong>Merge and gate:</strong> only fire these when price is beyond 1σ from VWAP (i.e. genuinely extended). Within 1σ, mean reversion to VWAP is noise — suppress. Merged weight: 1.1 (up from 1.0), but only when 1σ condition met.</div>
+      <div class="tag-row"><span class="rule-ref">#11+#12 merged</span><span class="rule-ref">add: |deviation| &gt; 1σ gate</span><span class="rule-ref">weight: 1.0 → 1.1</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <span class="pill pill-merge">MERGE</span>
+      <div>
+        <div class="card-title">Rules #25+#26 — higher_low + lower_high: merge into swing_structure_signal</div>
+        <div class="card-sub">These are one concept (swing point formation) not two independent signals</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="detail">Higher low (#25) and lower high (#26) are the definitions of bullish/bearish swing structure. They're currently scored separately but represent the same structural concept. <strong>Merge into:</strong> swing_structure_bull (higher_low) and swing_structure_bear (lower_high) — but critically, add a <em>sequence check</em>: only fire if this is the 2nd consecutive swing point in the same direction (e.g. 2 consecutive higher lows = confirmed uptrend structure). Single swing points are noise.</div>
+      <div class="tag-row"><span class="rule-ref">#25+#26 → restructured</span><span class="rule-ref">add: 2nd consecutive swing gate</span><span class="rule-ref">weight: 0.9 → 1.1</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <span class="pill pill-merge">MERGE</span>
+      <div>
+        <div class="card-title">Rules #30+#31 — ema_cross_imminent: fold into a warning layer, not a scored signal</div>
+        <div class="card-sub">Imminent cross signals should suppress, not add score</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="detail">EMA cross imminent (spread &lt; 0.08%) currently adds score in the opposite direction. But an imminent bearish cross during a bull signal should <em>reduce confidence</em> in the bull signal, not just add bearish points. <strong>Refactor:</strong> convert #30/#31 from scored signals into a confidence suppressor. When ema_cross_imminent fires, multiply the current net score by 0.7 (suppress 30%) and show a UI warning: "EMA cross imminent — signal weakening." This is more accurate and actionable.</div>
+      <div class="tag-row"><span class="rule-ref">#30+#31 → confidence suppressor (×0.7 modifier)</span><span class="rule-ref">remove from scoring</span><span class="rule-ref">add UI warning badge</span></div>
+    </div>
+  </div>
+
+</div>
+
+<div id="tab-risk" class="panel">
+
+  <div class="risk-box">
+    <div class="risk-title" style="color:#791F1F">Double-counting EMA (rules #1–#4)</div>
+    <div class="risk-item">Rules #1 and #3 fire simultaneously in every uptrend — EMA score inflated by 2.7 (1.5 + 1.2) vs the intended 1.2. This is the biggest scoring distortion in the library. Fix: mutual exclusion.</div>
+  </div>
+
+  <div class="risk-box">
+    <div class="risk-title" style="color:#791F1F">Confluence score double-counts its own sub-rules</div>
+    <div class="risk-item">Rules #32/#33 (confluence) fire based on bull_score ≥ 6. But #32 itself has weight 1.8 — which feeds back into future score calculations if not isolated. Confirm that confluence rules do NOT count themselves in the score that triggered them. This is a circular dependency risk.</div>
+  </div>
+
+  <div class="risk-box">
+    <div class="risk-title" style="color:#791F1F">No market regime filter</div>
+    <div class="risk-item">All 33 rules treat trending and ranging markets identically. In a range-bound choppy day (VIX spike, pre-Fed announcement), trend signals (#1–#6) become false-signal generators. Add a regime_choppy flag based on ADX &lt; 20 — when true, suppress all trend and momentum signals and only score mean-reversion rules.</div>
+  </div>
+
+  <div class="risk-box">
+    <div class="risk-title" style="color:#791F1F">No options-specific context (IV / earnings)</div>
+    <div class="risk-item">For options trading, IV rank and earnings proximity change every signal's risk profile. A 1.8-confidence bull signal on a stock with IV rank 90 and earnings in 2 days is a completely different risk than the same signal on a normal day. At minimum, flag when IV rank &gt; 80 or earnings within 3 days and suppress or warn on directional signals.</div>
+  </div>
+
+  <div class="risk-box">
+    <div class="risk-title" style="color:#791F1F">No signal staleness / invalidation logic</div>
+    <div class="risk-item">Once a signal fires, there's no rule that invalidates it. Example: vwap_reclaim_bullish fires, then 2 candles later price drops back below VWAP — the bullish signal is now wrong but still in the score. Add an invalidation check: any signal that is contradicted by a later opposing signal of equal or higher weight should be marked INVALIDATED and removed from the active score.</div>
+  </div>
+
+</div>
+
+</div>
+
+<script>
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    const names = ['add','mod','merge','risk'];
+    t.classList.toggle('active', names[i] === name);
+  });
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+}
+</script>

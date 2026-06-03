@@ -1,0 +1,63 @@
+Alert Plan
+
+. POWER TREND
+Strong directional move with full stack agreement
+daily_trend     = BULL/BEAR
+ema_state       = agrees with daily_trend
+price_vs_vwap   = ABOVE (bull) / BELOW (bear)
+vwap_motion     = TOWARD (pulling away, not reverting)
+ai_confidence   ≥ 0.75
+Fires: Once per session per ticker, directional bias setter
+
+2. STRUCTURE BREAK
+Key level broken with volume proof
+price crosses   orb_high/low OR prev_day_h/l OR swing_high/low
+rvol            > 1.5 on break bar
+ema_state       agrees with break direction
+ai_confidence   ≥ 0.70
+Fires: On confirmed close beyond level, not just touch
+
+3. VWAP RESET
+Pullback to VWAP in trending condition — continuation entry
+price_vs_vwap   transitions BELOW→ABOVE (bull) or ABOVE→BELOW (bear)
+vwap_motion     = TOWARD then flips AWAY after touch
+daily_trend     = agrees with direction
+ema_state       = agrees
+ai_confidence   ≥ 0.65
+Fires: Mean reversion entry in trend direction only, not counter-trend
+
+4. EXHAUSTION REVERSAL
+Overextended move snapping back — counter-trend only
+vwap_distance_pct  > 1.5%
+vwap_motion        flips TOWARD
+nearest_support/resistance  within 0.3% (level acting as magnet)
+ema_spread_pct     compressing (cross imminent)
+ai_confidence      ≥ 0.72  ← higher bar because counter-trend
+Fires: Reversal only, requires tighter AI confidence threshold
+
+5. POC MAGNET TRAP
+Price gravitating to high-volume node — expect stall or rejection
+price within 0.25%  of poc_reg OR poc_pre
+rvol               dropping (volume drying up near POC)
+vwap_motion        = FLAT
+ai_confidence      ≥ 0.60  ← informational, lower threshold ok
+
+Signal Interaction Rules
+POWER TREND     + STRUCTURE BREAK  = same direction → TIER 1 MAX CONVICTION
+POWER TREND     + EXHAUSTION       = conflict → suppress both, emit WARNING only
+STRUCTURE BREAK + POC in path      → downgrade to TIER 2, wait for POC clear
+VWAP RESET      + ema_state disagrees → suppress, not clean enough
+any signal      + ai_confidence < threshold → drop silently, no alert
+
+Output Shape Per Signal
+python{
+  "signal":        "POWER_TREND_BULL",
+  "tier":          1,               # 1=act, 2=watch, 3=context
+  "ai_confidence": 0.81,
+  "components":   ["daily_trend", "ema_state", "vwap", "rvol"],  # what fired
+  "suppressed_by": None,            # or "POC_MAGNET" if blocked
+  "timestamp":     "09:47:00"
+}
+
+Net Result
+BeforeAfter15+ individual triggers5 composite signalsAny single indicator firesMinimum 3–4 indicators must agreeAI confidence as decorationAI confidence as hard gateNoisy, low convictionSparse, high conviction only

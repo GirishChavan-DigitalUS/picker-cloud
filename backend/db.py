@@ -443,7 +443,7 @@ async def get_composite_alerts(
 # ---------------------------------------------------------------------------
 # Session management + login audit log
 # ---------------------------------------------------------------------------
-from datetime import datetime, timezone as _tz  # noqa: E402 — keep near usage
+from datetime import datetime, timedelta, timezone as _tz  # noqa: E402 — keep near usage
 
 
 async def create_session(session_id: str, username: str, ip: str, ua: str) -> None:
@@ -459,6 +459,18 @@ async def create_session(session_id: str, username: str, ip: str, ua: str) -> No
 
 
 _SESSION_IDLE_SECS = 2 * 3600  # 2 hours idle → auto-expire
+
+
+async def expire_idle_sessions() -> int:
+    """Mark sessions idle for too long as inactive."""
+    cutoff = (datetime.now(_tz.utc) - timedelta(seconds=_SESSION_IDLE_SECS)).isoformat()
+    async with aiosqlite.connect(DB_PATH) as db:
+        cur = await db.execute(
+            "UPDATE sessions SET is_active=0 WHERE is_active=1 AND last_seen < ?",
+            (cutoff,),
+        )
+        await db.commit()
+        return cur.rowcount or 0
 
 
 async def get_session_user(session_id: str) -> str | None:
@@ -499,6 +511,7 @@ async def deactivate_session(session_id: str) -> None:
 
 
 async def count_active_sessions(username: str) -> int:
+    await expire_idle_sessions()
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute(
@@ -510,6 +523,7 @@ async def count_active_sessions(username: str) -> int:
 
 
 async def list_sessions() -> list[dict]:
+    await expire_idle_sessions()
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute(

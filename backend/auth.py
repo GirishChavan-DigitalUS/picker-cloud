@@ -287,6 +287,8 @@ async def login(body: LoginIn, request: Request, response: Response):
     await _db.log_login(body.username, ip, ua, ok)
     if not ok:
         raise HTTPException(status_code=401, detail="Invalid username or password")
+    # Expire idle sessions before enforcing the per-user concurrency limit.
+    await _db.expire_idle_sessions()
     # Non-admin users are limited to APPUSER_SESSION_LIMIT concurrent sessions
     if body.username != "admin":
         active = await _db.count_active_sessions(body.username)

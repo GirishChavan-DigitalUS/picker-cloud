@@ -186,9 +186,11 @@ const TickerInsightCard: React.FC<Props> = ({ ticker, isMobile, onOpenDetail }) 
     .filter((sig) => sig.ticker === ticker && VWAP_SIGNAL_TYPES.has(sig.signal_type))
     .filter((sig) => now > 0 && new Date(sig.timestamp).getTime() >= now - 20 * 60_000)
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+  const vwapDist = state?.indicators?.vwap_distance_pct ?? null;
+  const showVwapBadge = !!recentVwapSignal && Math.abs(vwapDist ?? 0) < 1.0;
 
-  const vwapSignalLabel = recentVwapSignal ? formatVwapSignalLabel(recentVwapSignal.signal_type) : null;
-  const vwapSignalColor = recentVwapSignal ? formatVwapSignalColor(recentVwapSignal.signal_type) : '#64748b';
+  const vwapSignalLabel = showVwapBadge ? formatVwapSignalLabel(recentVwapSignal!.signal_type) : null;
+  const vwapSignalColor = showVwapBadge ? formatVwapSignalColor(recentVwapSignal!.signal_type) : '#64748b';
 
   const isUp   = changePct != null && changePct > 0;
   const isDown = changePct != null && changePct < 0;

@@ -28,16 +28,14 @@ const TickerRow: React.FC<TickerRowProps> = ({ ticker, selected, onClick, onRemo
     .filter((sig) => sig.ticker === ticker && ['vwap_reclaim', 'vwap_breakdown'].includes(sig.signal_type))
     .filter((sig) => now > 0 && new Date(sig.timestamp).getTime() >= now - 20 * 60_000)
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+  const vwapDist = ind?.vwap_distance_pct ?? null;
+  const showVwapBadge = !!recentVwapSignal && Math.abs(vwapDist ?? 0) < 1.0;
 
-  const vwapLabel = recentVwapSignal
-    ? recentVwapSignal.signal_type === 'vwap_reclaim'
-      ? 'VWAP ▲'
-      : 'VWAP ▼'
+  const vwapLabel = showVwapBadge
+    ? (recentVwapSignal!.signal_type === 'vwap_reclaim' ? 'VWAP ▲' : 'VWAP ▼')
     : null;
-  const vwapColor = recentVwapSignal
-    ? recentVwapSignal.signal_type === 'vwap_reclaim'
-      ? '#26a69a'
-      : '#ef5350'
+  const vwapColor = showVwapBadge
+    ? (recentVwapSignal!.signal_type === 'vwap_reclaim' ? '#26a69a' : '#ef5350')
     : undefined;
 
   const priceColor = ind?.ema_state === 'BULLISH' ? '#26a69a'

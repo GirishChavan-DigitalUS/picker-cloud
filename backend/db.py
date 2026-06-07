@@ -160,6 +160,24 @@ CREATE TABLE IF NOT EXISTS push_subscriptions (
     tickers     TEXT,               -- JSON array of subscribed tickers, NULL = all
     created_at  TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
 );
+
+CREATE TABLE IF NOT EXISTS confluence_levels (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    ticker          TEXT    NOT NULL,
+    timeframe       TEXT    NOT NULL,   -- 'daily' | 'weekly' | 'monthly'
+    poc             REAL,
+    val             REAL,
+    vah             REAL,
+    pivot           REAL,
+    s1              REAL,
+    s2              REAL,
+    r1              REAL,
+    r2              REAL,
+    last_updated    TEXT    NOT NULL,   -- ISO-8601 UTC
+    UNIQUE(ticker, timeframe)
+);
+
+CREATE INDEX IF NOT EXISTS idx_confluence_ticker ON confluence_levels(ticker);
 """
 
 

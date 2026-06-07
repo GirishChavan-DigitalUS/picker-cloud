@@ -18,11 +18,34 @@ const TickerRow: React.FC<TickerRowProps> = ({ ticker, selected, onClick, onRemo
   const [hovering, setHovering] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [now, setNow] = useState(() => Date.now());
+  const [confluenceStrength, setConfluenceStrength] = useState<string | null>(null);
 
   useEffect(() => {
     const interval = window.setInterval(() => setNow(Date.now()), 15_000);
     return () => window.clearInterval(interval);
   }, []);
+
+  // Fetch confluence strength
+  useEffect(() => {
+    const fetchConfluence = async () => {
+      try {
+        const params = new URLSearchParams();
+        if (state?.price) params.append('current_price', state.price.toString());
+        const res = await fetch(`/api/confluence/${ticker}?${params}`);
+        const data = await res.json();
+        setConfluenceStrength(data.patterns?.confluence_strength || null);
+      } catch {
+        // Silently fail, optional feature
+      }
+    };
+
+    if (state?.price) {
+      fetchConfluence();
+      // Refresh every 5 minutes
+      const interval = setInterval(fetchConfluence, 5 * 60 * 1000);
+      return () => clearInterval(interval);
+    }
+  }, [ticker, state?.price]);
 
   const recentVwapSignal = [...signals]
     .filter((sig) => sig.ticker === ticker && ['vwap_reclaim', 'vwap_breakdown'].includes(sig.signal_type))
@@ -69,6 +92,19 @@ const TickerRow: React.FC<TickerRowProps> = ({ ticker, selected, onClick, onRemo
               lineHeight: 1,
             }}>
               {vwapLabel}
+            </span>
+          )}
+          {confluenceStrength && (
+            <span style={{
+              fontSize: '0.62rem', fontWeight: 700,
+              color: confluenceStrength === 'HIGH' ? '#26a69a' : confluenceStrength === 'MEDIUM' ? '#ff9800' : '#666',
+              background: confluenceStrength === 'HIGH' ? '#26a69a16' : confluenceStrength === 'MEDIUM' ? '#ff980016' : '#66666616',
+              border: confluenceStrength === 'HIGH' ? '1px solid #26a69a44' : confluenceStrength === 'MEDIUM' ? '1px solid #ff980044' : '1px solid #66666644',
+              borderRadius: 4,
+              padding: '1px 5px',
+              lineHeight: 1,
+            }}>
+              {confluenceStrength === 'HIGH' ? '⚡ CONF' : confluenceStrength === 'MEDIUM' ? 'CONF' : 'conf'}
             </span>
           )}
         </span>

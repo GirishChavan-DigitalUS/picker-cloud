@@ -37,6 +37,19 @@ export interface OHLCV {
   timeframe: string;
 }
 
+export interface ConfluenceLevels {
+  poc: number | null;
+  val: number | null;
+  vah: number | null;
+  pivot: number | null;
+  s1: number | null;
+  s2: number | null;
+  r1: number | null;
+  r2: number | null;
+  timestamp: string;
+  timeframe: string;
+}
+
 export interface IndicatorSnapshot {
   ticker: string;
   timestamp: string;

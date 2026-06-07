@@ -24,6 +24,7 @@ from api.routes_predictions import router as predictions_router
 from api.routes_composite import router as composite_router
 from api.routes_push import router as push_router
 from api.routes_costs import router as costs_router
+from api.routes_confluence import router as confluence_router
 from api.ws import router as ws_router
 
 
@@ -67,6 +68,7 @@ app.include_router(predictions_router, prefix="/api")
 app.include_router(composite_router, prefix="/api")
 app.include_router(push_router, prefix="/api")
 app.include_router(costs_router, prefix="/api")
+app.include_router(confluence_router, prefix="/api")
 app.include_router(ws_router)
 
 

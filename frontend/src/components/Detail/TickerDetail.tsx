@@ -5,6 +5,7 @@ import { API_BASE, formatPrice, confColor } from '../../utils/formatters';
 import CandlestickChart from '../Chart/CandlestickChart';
 import MarketReadPanel from './MarketReadPanel';
 import TrendStructureTimeline from './TrendStructureTimeline';
+import ConfluencePanel from './ConfluencePanel';
 
 interface ConfluenceSignal { label: string; side: 'bull' | 'bear'; }
 function computeConfluenceBreakdown(ind: import('../../stores/marketStore').IndicatorSnapshot | null, price: number | null): ConfluenceSignal[] {
@@ -387,6 +388,11 @@ const TickerDetail: React.FC<TickerDetailProps> = ({ ticker, onClose, historical
               </div>
 
             </div>
+          </div>
+
+          {/* Confluence Levels — new section */}
+          <div className="detail-card detail-card-scroll" style={{ flex: '0 0 auto', marginTop: 0, maxHeight: '45vh' }}>
+            <ConfluencePanel ticker={ticker} currentPrice={state?.price ?? null} />
           </div>
 
         </div>{/* end sidebar */}

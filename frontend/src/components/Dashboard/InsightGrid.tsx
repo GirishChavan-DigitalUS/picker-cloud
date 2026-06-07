@@ -13,11 +13,9 @@ interface Props {
 const InsightGrid: React.FC<Props> = ({ tickers, isMobile, onSelectTicker, sortBy }) => {
   const allPrices = useMarketStore((s) => s.tickers);
 
-  const aiRank = (ticker: string) => {
-    const p = allPrices[ticker]?.latestPrediction?.prediction as string | undefined;
-    if (p === 'UP')   return 0;
-    if (p === 'DOWN') return 2;
-    return 1;
+  const aiConfidence = (ticker: string) => {
+    const conf = allPrices[ticker]?.latestPrediction?.confidence;
+    return typeof conf === 'number' ? conf : -1;
   };
 
   const sorted = [...tickers].sort((a, b) => {
@@ -27,7 +25,12 @@ const InsightGrid: React.FC<Props> = ({ tickers, isMobile, onSelectTicker, sortB
       const pb = allPrices[b]?.price ?? 0;
       return pb - pa;
     }
-    if (sortBy === 'ai') return aiRank(a) - aiRank(b);
+    if (sortBy === 'ai') {
+      const ca = aiConfidence(a);
+      const cb = aiConfidence(b);
+      if (ca !== cb) return cb - ca;
+      return a.localeCompare(b);
+    }
     return 0;
   });
   if (isMobile) {

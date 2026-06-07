@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useMarketStore } from '../../stores/marketStore';
 import { formatPrice } from '../../utils/formatters';
 import ConfirmDialog from '../ConfirmDialog';
@@ -12,10 +12,33 @@ interface TickerRowProps {
 
 const TickerRow: React.FC<TickerRowProps> = ({ ticker, selected, onClick, onRemove }) => {
   const state = useMarketStore((s) => s.tickers[ticker]);
+  const signals = useMarketStore((s) => s.signals);
   const ind = state?.indicators ?? null;
   const pred = state?.latestPrediction ?? null;
   const [hovering, setHovering] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(Date.now()), 15_000);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  const recentVwapSignal = [...signals]
+    .filter((sig) => sig.ticker === ticker && ['vwap_reclaim', 'vwap_breakdown'].includes(sig.signal_type))
+    .filter((sig) => now > 0 && new Date(sig.timestamp).getTime() >= now - 20 * 60_000)
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+
+  const vwapLabel = recentVwapSignal
+    ? recentVwapSignal.signal_type === 'vwap_reclaim'
+      ? 'VWAP ▲'
+      : 'VWAP ▼'
+    : null;
+  const vwapColor = recentVwapSignal
+    ? recentVwapSignal.signal_type === 'vwap_reclaim'
+      ? '#26a69a'
+      : '#ef5350'
+    : undefined;
 
   const priceColor = ind?.ema_state === 'BULLISH' ? '#26a69a'
     : ind?.ema_state === 'BEARISH' ? '#ef5350'
@@ -35,7 +58,22 @@ const TickerRow: React.FC<TickerRowProps> = ({ ticker, selected, onClick, onRemo
       style={{ cursor: 'pointer' }}
     >
       <td style={{ fontWeight: 700, color: '#e0e0e0', letterSpacing: '0.03em', position: 'relative' }}>
-        {ticker}
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          {ticker}
+          {vwapLabel && (
+            <span style={{
+              fontSize: '0.62rem', fontWeight: 700,
+              color: vwapColor,
+              background: `${vwapColor}16`,
+              border: `1px solid ${vwapColor}44`,
+              borderRadius: 4,
+              padding: '1px 5px',
+              lineHeight: 1,
+            }}>
+              {vwapLabel}
+            </span>
+          )}
+        </span>
         {hovering && (
           <span
             onClick={(e) => { e.stopPropagation(); setConfirmDelete(true); }}

@@ -39,6 +39,16 @@ const ACTION_STYLE: Record<string, { bg: string; border: string; color: string }
   neutral: { bg: 'rgba(100,116,139,0.08)', border: 'rgba(100,116,139,0.22)', color: '#64748b' },
 };
 
+const VWAP_SIGNAL_TYPES = new Set(['vwap_reclaim', 'vwap_breakdown']);
+const formatVwapSignalLabel = (signalType: string) =>
+  signalType === 'vwap_reclaim' ? 'VWAP Reclaim'
+  : signalType === 'vwap_breakdown' ? 'VWAP Breakdown'
+  : '';
+const formatVwapSignalColor = (signalType: string) =>
+  signalType === 'vwap_reclaim' ? '#26a69a'
+  : signalType === 'vwap_breakdown' ? '#ef5350'
+  : '#64748b';
+
 const HTF_HEX: Record<string, string> = { BULL: '#22c55e', BEAR: '#ef5350', NEUTRAL: '#64748b' };
 const VOL_HEX: Record<string, string>  = { HIGH: '#00C896', LOW: '#ef5350',  NORMAL: '#64748b' };
 
@@ -160,10 +170,25 @@ interface Props {
 // ── Component ─────────────────────────────────────────────────────────────────
 const TickerInsightCard: React.FC<Props> = ({ ticker, isMobile, onOpenDetail }) => {
   const state      = useMarketStore((s) => s.tickers[ticker]);
+  const signals    = useMarketStore((s) => s.signals);
   const refreshKey = state?.indicators?.timestamp ?? null;
   const price      = state?.price ?? null;
   const changePct  = state?.changePct ?? null;
   const result     = useInsightData(ticker, refreshKey);
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(Date.now()), 15_000);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  const recentVwapSignal = [...signals]
+    .filter((sig) => sig.ticker === ticker && VWAP_SIGNAL_TYPES.has(sig.signal_type))
+    .filter((sig) => now > 0 && new Date(sig.timestamp).getTime() >= now - 20 * 60_000)
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+
+  const vwapSignalLabel = recentVwapSignal ? formatVwapSignalLabel(recentVwapSignal.signal_type) : null;
+  const vwapSignalColor = recentVwapSignal ? formatVwapSignalColor(recentVwapSignal.signal_type) : '#64748b';
 
   const isUp   = changePct != null && changePct > 0;
   const isDown = changePct != null && changePct < 0;
@@ -240,6 +265,15 @@ const TickerInsightCard: React.FC<Props> = ({ ticker, isMobile, onOpenDetail }) 
                 border: `1px solid ${tlColor}44`, borderRadius: 3, padding: '1px 6px',
               }}>
                 {result.pattern}
+              </span>
+            )}
+            {vwapSignalLabel && (
+              <span style={{
+                fontSize: '0.58rem', fontWeight: 700,
+                color: vwapSignalColor, background: `${vwapSignalColor}18`,
+                border: `1px solid ${vwapSignalColor}44`, borderRadius: 3, padding: '1px 6px',
+              }}>
+                {vwapSignalLabel}
               </span>
             )}
           </div>
@@ -352,6 +386,15 @@ const TickerInsightCard: React.FC<Props> = ({ ticker, isMobile, onOpenDetail }) 
               borderRadius: 4, padding: '2px 8px',
             }}>
               {result.pattern}
+            </span>
+          )}
+          {vwapSignalLabel && (
+            <span style={{
+              fontSize: '0.65rem', fontWeight: 700, color: vwapSignalColor,
+              background: `${vwapSignalColor}22`, border: `1px solid ${vwapSignalColor}55`,
+              borderRadius: 4, padding: '2px 8px',
+            }}>
+              {vwapSignalLabel}
             </span>
           )}
           <span style={{ fontSize: '0.62rem', color: '#475569', border: '1px solid var(--border)', borderRadius: 4, padding: '2px 7px' }}>

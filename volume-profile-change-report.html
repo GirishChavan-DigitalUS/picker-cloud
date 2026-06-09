@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Volume Profile Change Report</title>
+  <style>
+    :root {
+      --bg: #f7f6f2;
+      --ink: #1f2933;
+      --muted: #52606d;
+      --card: #ffffff;
+      --line: #d9e2ec;
+      --accent: #0b6e4f;
+      --accent-soft: #e6f4ef;
+      --warn: #8d2b0b;
+      --warn-soft: #fdeee7;
+      --mono-bg: #f0f4f8;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 90% 10%, #d9efe6 0%, transparent 35%),
+        radial-gradient(circle at 10% 90%, #e9f0f8 0%, transparent 40%),
+        var(--bg);
+      line-height: 1.45;
+    }
+
+    .wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 28px 20px 44px;
+    }
+
+    header {
+      background: linear-gradient(135deg, #0b6e4f 0%, #0e8a62 100%);
+      color: #fff;
+      border-radius: 16px;
+      padding: 22px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 1.7rem;
+      letter-spacing: 0.02em;
+    }
+
+    .subtitle {
+      margin: 0;
+      opacity: 0.93;
+      font-size: 0.98rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 14px;
+      margin-top: 16px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px;
+    }
+
+    .card h2 {
+      margin: 0 0 10px;
+      font-size: 1.05rem;
+    }
+
+    .badge {
+      display: inline-block;
+      background: var(--accent-soft);
+      color: var(--accent);
+      border: 1px solid #b7e3d4;
+      border-radius: 999px;
+      padding: 2px 9px;
+      font-size: 0.76rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      margin-right: 6px;
+      margin-bottom: 6px;
+    }
+
+    .warn {
+      background: var(--warn-soft);
+      border: 1px solid #f5c9b9;
+      color: var(--warn);
+      border-radius: 10px;
+      padding: 10px 12px;
+      margin-top: 12px;
+      font-size: 0.92rem;
+    }
+
+    ul {
+      margin: 8px 0 0 18px;
+      padding: 0;
+    }
+
+    li { margin: 6px 0; }
+
+    .file {
+      font-family: Consolas, "Courier New", monospace;
+      background: var(--mono-bg);
+      border: 1px solid var(--line);
+      padding: 1px 6px;
+      border-radius: 6px;
+      font-size: 0.86rem;
+      white-space: nowrap;
+    }
+
+    .timeline {
+      margin-top: 16px;
+      border-left: 3px solid #b7e3d4;
+      padding-left: 14px;
+    }
+
+    .event {
+      margin-bottom: 12px;
+      padding: 10px 12px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+    }
+
+    .event .meta {
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      font-size: 0.92rem;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      overflow: hidden;
+      display: block;
+    }
+
+    thead {
+      background: #ecfdf5;
+      color: #065f46;
+      font-weight: 700;
+    }
+
+    tr { display: table; width: 100%; table-layout: fixed; }
+    th, td {
+      padding: 9px 10px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    tbody tr:last-child td { border-bottom: none; }
+
+    .foot {
+      margin-top: 16px;
+      color: var(--muted);
+      font-size: 0.86rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Volume Profile Change Report</h1>
+      <p class="subtitle">
+        Codebase understanding + identified changes based on volume profile logic and confluence integration.
+      </p>
+    </header>
+
+    <div class="grid">
+      <section class="card">
+        <h2>Scope Checked</h2>
+        <span class="badge">Backend</span>
+        <span class="badge">Frontend</span>
+        <span class="badge">Git History</span>
+        <ul>
+          <li>Reviewed all references to volume profile, POC, VAL, and VAH.</li>
+          <li>Inspected commit history for VP-related files and integration points.</li>
+          <li>Mapped data flow from calculation to API to UI rendering.</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>High-Level Finding</h2>
+        <ul>
+          <li>Main VP evolution is in commit <span class="file">57e6c03</span> ("updated logic with VP").</li>
+          <li>Existing indicator <span class="file">backend/indicators/volume_profile.py</span> still computes session POC only.</li>
+          <li>New confluence path adds multi-timeframe POC + value area (VAL/VAH) plus pivots and pattern detection.</li>
+          <li>Frontend now surfaces VP-driven confluence and Decipher fusion score.</li>
+        </ul>
+      </section>
+    </div>
+
+    <section class="timeline">
+      <div class="event">
+        <div><strong>Initial Baseline</strong></div>
+        <div class="meta">Commit: 4230e59</div>
+        <div>Core scheduler already imported and used <span class="file">compute_volume_profile()</span> for snapshot <span class="file">poc</span>.</div>
+      </div>
+      <div class="event">
+        <div><strong>VP-Driven Expansion</strong></div>
+        <div class="meta">Commit: 57e6c03 (Sat Jun 6, 2026)</div>
+        <div>Introduced confluence engine, new API endpoints, DB table for confluence levels, and UI components for VP/pivot visualization.</div>
+      </div>
+    </section>
+
+    <section class="card" style="margin-top: 16px;">
+      <h2>Identified Changes (Volume Profile Based)</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>File</th>
+            <th>Change</th>
+            <th>VP Relevance</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="file">backend/ai/confluence_engine.py</span></td>
+            <td>New analyzer created. Calculates multi-timeframe POC/VAL/VAH using 50 bins, adds pivot levels, pattern detection, zone touch detection, and AI fusion score logic.</td>
+            <td>Primary VP logic expansion beyond single-session POC.</td>
+          </tr>
+          <tr>
+            <td><span class="file">backend/api/routes_confluence.py</span></td>
+            <td>New endpoints: <span class="file">/api/confluence/{ticker}</span>, <span class="file">/patterns</span>, <span class="file">/refresh</span>.</td>
+            <td>Exposes VP-based confluence levels and patterns to frontend.</td>
+          </tr>
+          <tr>
+            <td><span class="file">backend/main.py</span></td>
+            <td>Registered confluence router.</td>
+            <td>Enables VP-derived confluence APIs in runtime app.</td>
+          </tr>
+          <tr>
+            <td><span class="file">backend/db.py</span></td>
+            <td>Added <span class="file">confluence_levels</span> table (ticker, timeframe, poc, val, vah, pivots, last_updated).</td>
+            <td>Schema support for persistent VP/confluence snapshots (though current route layer mostly uses in-memory cache).</td>
+          </tr>
+          <tr>
+            <td><span class="file">frontend/src/components/Detail/ConfluencePanel.tsx</span></td>
+            <td>New panel rendering VP levels (VAH/POC/VAL), pivots, pattern badges, zone touches, and fusion score.</td>
+            <td>User-visible VP confluence dashboard.</td>
+          </tr>
+          <tr>
+            <td><span class="file">frontend/src/components/Detail/TickerDetail.tsx</span></td>
+            <td>Embedded ConfluencePanel in detail sidebar.</td>
+            <td>Makes VP-confluence visible in ticker drill-down.</td>
+          </tr>
+          <tr>
+            <td><span class="file">frontend/src/components/Dashboard/TickerRow.tsx</span></td>
+            <td>Fetches confluence endpoint and shows compact confluence strength chip.</td>
+            <td>VP influence shown at watchlist row level.</td>
+          </tr>
+          <tr>
+            <td><span class="file">frontend/src/stores/marketStore.ts</span></td>
+            <td>Added <span class="file">ConfluenceLevels</span> interface definition.</td>
+            <td>Types for VP/confluence payloads.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card" style="margin-top: 16px;">
+      <h2>Current VP Architecture (Practical)</h2>
+      <ul>
+        <li><strong>Path A (existing scheduler indicator):</strong> <span class="file">backend/indicators/volume_profile.py</span> computes session POC from closed candles and stores <span class="file">poc</span> inside regular snapshot stream.</li>
+        <li><strong>Path B (new confluence engine):</strong> <span class="file">backend/ai/confluence_engine.py</span> fetches yfinance daily bars per timeframe and computes POC + VAL + VAH + pivots separately.</li>
+        <li>Frontend confluence surfaces are wired to Path B API responses, not directly to scheduler Path A outputs.</li>
+      </ul>
+      <div class="warn">
+        Observation: The system now has two VP-related calculation paths with different data sources and output scope (POC-only vs POC+VAL+VAH).
+      </div>
+    </section>
+
+    <section class="card" style="margin-top: 16px;">
+      <h2>Behavioral Impact of Changes</h2>
+      <ul>
+        <li>Added multi-timeframe confluence context (daily/weekly/monthly) rather than single-session profile only.</li>
+        <li>Enabled pattern classifications like breakout, rejection, in-value-area, and POC tests.</li>
+        <li>Introduced a fused signal score combining VP/pivot confluence and optional AI prediction confidence.</li>
+        <li>Added manual API refresh route for confluence cache invalidation.</li>
+        <li>Exposed confluence strength at both dashboard and detail-panel UX levels.</li>
+      </ul>
+    </section>
+
+    <p class="foot">
+      Generated on June 8, 2026 based on in-repo code inspection and git history around VP-related files.
+    </p>
+  </div>
+</body>
+</html>

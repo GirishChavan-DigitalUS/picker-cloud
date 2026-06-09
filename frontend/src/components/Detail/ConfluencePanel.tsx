@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { useMarketStore } from '../../stores/marketStore';
-import type { ConfluenceLevels } from '../../stores/marketStore';
 
 interface ConfluencePanelProps {
   ticker: string;
@@ -82,7 +81,7 @@ const ConfluencePanel: React.FC<ConfluencePanelProps> = ({ ticker, currentPrice 
     return () => clearInterval(interval);
   }, [ticker, currentPrice, pred]);
 
-  const renderLevelRow = (label: string, value: number | null | undefined, isSupport: boolean, isZoneTouching: boolean = false) => {
+  const renderLevelRow = (label: string, value: number | null | undefined, isZoneTouching: boolean = false) => {
     if (value === null || value === undefined) return null;
 
     const distFromPrice = currentPrice ? Math.abs(currentPrice - value) : null;
@@ -137,7 +136,7 @@ const ConfluencePanel: React.FC<ConfluencePanelProps> = ({ ticker, currentPrice 
     // Check if any level is being touched
     const touchingLevels = Object.entries(zoneTouches)
       .filter(([key]) => key.startsWith(timeframe))
-      .map(([_, touch]) => touch.name);
+      .map(([, touch]) => touch.name);
 
     return (
       <div key={timeframe} style={{ marginBottom: 16 }}>
@@ -182,9 +181,9 @@ const ConfluencePanel: React.FC<ConfluencePanelProps> = ({ ticker, currentPrice 
             </div>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <tbody>
-                {renderLevelRow('VAH', vah, false, touchingLevels.includes('VAH'))}
-                {renderLevelRow('POC', poc, false, touchingLevels.includes('POC'))}
-                {renderLevelRow('VAL', val, true, touchingLevels.includes('VAL'))}
+                {renderLevelRow('VAH', vah, touchingLevels.includes('VAH'))}
+                {renderLevelRow('POC', poc, touchingLevels.includes('POC'))}
+                {renderLevelRow('VAL', val, touchingLevels.includes('VAL'))}
               </tbody>
             </table>
           </div>
@@ -198,11 +197,11 @@ const ConfluencePanel: React.FC<ConfluencePanelProps> = ({ ticker, currentPrice 
             </div>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <tbody>
-                {renderLevelRow('R2', r2, false, touchingLevels.includes('R2'))}
-                {renderLevelRow('R1', r1, false, touchingLevels.includes('R1'))}
-                {renderLevelRow('Pivot', pivot, false, touchingLevels.includes('PIVOT'))}
-                {renderLevelRow('S1', s1, true, touchingLevels.includes('S1'))}
-                {renderLevelRow('S2', s2, true, touchingLevels.includes('S2'))}
+                {renderLevelRow('R2', r2, touchingLevels.includes('R2'))}
+                {renderLevelRow('R1', r1, touchingLevels.includes('R1'))}
+                {renderLevelRow('Pivot', pivot, touchingLevels.includes('PIVOT'))}
+                {renderLevelRow('S1', s1, touchingLevels.includes('S1'))}
+                {renderLevelRow('S2', s2, touchingLevels.includes('S2'))}
               </tbody>
             </table>
           </div>

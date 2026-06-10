@@ -53,9 +53,9 @@ log = logging.getLogger(__name__)
 # Config
 # ---------------------------------------------------------------------------
 COOKIE_NAME           = "picker_session"
-COOKIE_MAX_AGE        = 7 * 24 * 3600          # 7 days
+COOKIE_MAX_AGE        = 30 * 24 * 3600         # 30 days — keeps iPhone PWA sessions alive across restarts
 COOKIE_SECURE         = os.environ.get("PICKER_COOKIE_SECURE", "1") != "0"
-COOKIE_SAMESITE       = "lax"
+COOKIE_SAMESITE       = "strict"               # same-origin PWA; strict is safe and avoids ITP confusion
 HTPASSWD_PATH         = os.environ.get("PICKER_HTPASSWD_PATH", "/etc/nginx/.htpasswd-picker")
 DEV_USER              = os.environ.get("PICKER_DEV_USER")
 DEV_PASS              = os.environ.get("PICKER_DEV_PASS")
@@ -85,7 +85,9 @@ PUBLIC_PATHS: set[str] = {
 def verify_credentials(username: str, password: str) -> bool:
     if not username or not password:
         return False
-    if DEV_USER and DEV_PASS and username == DEV_USER:
+    # Normalise to lowercase so login is case-insensitive (Admin == admin == ADMIN)
+    username = username.strip().lower()
+    if DEV_USER and DEV_PASS and username == DEV_USER.lower():
         return secrets.compare_digest(password, DEV_PASS)
     path = Path(HTPASSWD_PATH)
     if not path.is_file():
@@ -98,7 +100,7 @@ def verify_credentials(username: str, password: str) -> bool:
             if not line or line.startswith("#") or ":" not in line:
                 continue
             user, _, hashval = line.partition(":")
-            if user == username:
+            if user.lower() == username:
                 stored_hash = hashval.strip()
                 break
         if not stored_hash:
@@ -283,15 +285,17 @@ class LoginIn(BaseModel):
 async def login(body: LoginIn, request: Request, response: Response):
     ip = _get_ip(request)
     ua = request.headers.get("user-agent", "")
-    ok = verify_credentials(body.username, body.password)
-    await _db.log_login(body.username, ip, ua, ok)
+    # Normalise username here too so logs and session rows always store lowercase
+    normalised_username = body.username.strip().lower()
+    ok = verify_credentials(normalised_username, body.password)
+    await _db.log_login(normalised_username, ip, ua, ok)
     if not ok:
         raise HTTPException(status_code=401, detail="Invalid username or password")
     # Expire idle sessions before enforcing the per-user concurrency limit.
     await _db.expire_idle_sessions()
     # Non-admin users are limited to APPUSER_SESSION_LIMIT concurrent sessions
-    if body.username != "admin":
-        active = await _db.count_active_sessions(body.username)
+    if normalised_username != "admin":
+        active = await _db.count_active_sessions(normalised_username)
         if active >= APPUSER_SESSION_LIMIT:
             raise HTTPException(
                 status_code=403,
@@ -299,9 +303,9 @@ async def login(body: LoginIn, request: Request, response: Response):
                        "Ask an admin to free a session.",
             )
     session_id = str(uuid.uuid4())
-    await _db.create_session(session_id, body.username, ip, ua)
+    await _db.create_session(session_id, normalised_username, ip, ua)
     _issue_cookie(response, session_id)
-    return {"ok": True, "username": body.username}
+    return {"ok": True, "username": normalised_username}
 
 
 @router.post("/logout")

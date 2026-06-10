@@ -76,16 +76,33 @@ function parsePatterns(raw: string[] | string | null | undefined): string[] {
 // ── Props ─────────────────────────────────────────────────────────────────────
 interface MarketReadPanelProps {
   ticker: string;
+  currentPrice: number | null;
   indicators: IndicatorSnapshot | null;
   prediction: PredictionRow | null;
 }
 
-const MarketReadPanel: React.FC<MarketReadPanelProps> = ({ ticker, indicators: ind, prediction: pred }) => {
+interface ConfluencePayload {
+  levels?: unknown;
+  patterns?: {
+    confluence_strength?: string;
+    bias_narrative?: string;
+  };
+  fusion_score?: {
+    fusion_score: number;
+    fusion_signal: string;
+    reasoning: string;
+  } | null;
+}
+
+const MarketReadPanel: React.FC<MarketReadPanelProps> = ({ ticker, currentPrice, indicators: ind, prediction: pred }) => {
   // ── On-demand LLM state ────────────────────────────────────────────────────
   const [loading, setLoading] = React.useState(false);
   const [localResult, setLocalResult] = React.useState<{ ticker: string; narrative: string } | null>(null);
   const [llmError, setLlmError] = React.useState<string | null>(null);
   const [signalsOpen, setSignalsOpen] = React.useState(true);
+  const [confluenceData, setConfluenceData] = React.useState<ConfluencePayload | null>(null);
+  const [confluenceLoading, setConfluenceLoading] = React.useState(false);
+  const [confluenceError, setConfluenceError] = React.useState<string | null>(null);
 
   const handleGenerate = React.useCallback(async () => {
     setLoading(true);
@@ -103,6 +120,38 @@ const MarketReadPanel: React.FC<MarketReadPanelProps> = ({ ticker, indicators: i
       setLoading(false);
     }
   }, [ticker]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    const loadConfluence = async () => {
+      setConfluenceLoading(true);
+      setConfluenceError(null);
+
+      try {
+        const params = new URLSearchParams();
+        if (currentPrice !== null) params.append('current_price', currentPrice.toString());
+        if (pred) {
+          params.append('ai_prediction', pred.prediction || 'NEUTRAL');
+          params.append('ai_confidence', (pred.confidence || 0).toString());
+        }
+
+        const res = await fetch(`/api/confluence/${ticker}?${params.toString()}`);
+        if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+
+        const data = await res.json() as ConfluencePayload;
+        if (!cancelled) setConfluenceData(data);
+      } catch (e) {
+        if (!cancelled) setConfluenceError(e instanceof Error ? e.message : 'Unable to load confluence');
+      } finally {
+        if (!cancelled) setConfluenceLoading(false);
+      }
+    };
+
+    loadConfluence();
+    const interval = window.setInterval(loadConfluence, 5 * 60 * 1000);
+    return () => { cancelled = true; window.clearInterval(interval); };
+  }, [ticker, currentPrice, pred]);
 
   // ── Derived values ─────────────────────────────────────────────────────────
   const rules: string[] = pred?.rules_triggered
@@ -124,6 +173,28 @@ const MarketReadPanel: React.FC<MarketReadPanelProps> = ({ ticker, indicators: i
   const structColor = structure ? (STRUCTURE_COLOR[structure] ?? '#9e9e9e') : '#9e9e9e';
   const structIcon  = structure ? (STRUCTURE_ICON[structure]  ?? '—')       : null;
   const patterns    = parsePatterns(ind?.candle_patterns);
+  const confluenceBias = ind?.confluence_bias ?? null;
+  const confluenceBiasLabel = confluenceBias === 'BULL' ? 'BUY'
+    : confluenceBias === 'BEAR' ? 'SELL'
+    : confluenceBias === 'MIXED' ? 'MIXED'
+    : 'WAIT';
+  const confluenceBiasColor = confluenceBias === 'BULL' ? '#26a69a'
+    : confluenceBias === 'BEAR' ? '#ef5350'
+    : '#60a5fa';
+  const confluenceBiasText = confluenceBias === 'BULL'
+    ? 'More of the active signals are pointing up. Buyers have the stronger hand.'
+    : confluenceBias === 'BEAR'
+    ? 'More of the active signals are pointing down. Sellers have the stronger hand.'
+    : 'Signals are mixed, so this is a wait-and-see setup until one side gets clearer confirmation.';
+  const confluenceStrength = confluenceData?.patterns?.confluence_strength ?? 'LOW';
+  const fusionScore = confluenceData?.fusion_score ?? null;
+  const fusionColor = fusionScore
+    ? fusionScore.fusion_score >= 70
+      ? '#26a69a'
+      : fusionScore.fusion_score >= 50
+      ? '#ff9800'
+      : '#ef5350'
+    : '#666';
 
   return (
     <div style={{ fontSize: '0.73rem' }}>
@@ -351,6 +422,89 @@ const MarketReadPanel: React.FC<MarketReadPanelProps> = ({ ticker, indicators: i
               </summary>
               <pre className="evidence-pre">{JSON.stringify(evidence, null, 2)}</pre>
             </details>
+          )}
+        </div>
+      )}
+
+      {/* ══ 5. CONFLUENCE SUMMARY ═════════════════════════════════════════ */}
+      {(confluenceLoading || confluenceData || confluenceError || ind?.confluence_bias) && (
+        <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+            <span style={{ fontSize: '0.6rem', fontWeight: 700, color: '#818cf8', letterSpacing: '0.09em' }}>
+              CONFLUENCE
+            </span>
+            <span style={{
+              fontSize: '0.62rem', fontWeight: 700, color: confluenceBiasColor,
+              background: `${confluenceBiasColor}16`, border: `1px solid ${confluenceBiasColor}44`,
+              borderRadius: 4, padding: '1px 6px', lineHeight: 1,
+            }}>
+              {confluenceBiasLabel}
+            </span>
+          </div>
+
+            <p style={{ fontSize: '0.68rem', color: '#d1d5db', margin: '0 0 8px', lineHeight: 1.5 }}>
+              {confluenceBiasText}
+            </p>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3px 8px', marginBottom: 8 }}>
+              <span style={{ color: '#9e9e9e' }}>Buy pressure</span>
+              <span style={{ fontWeight: 700, color: '#26a69a' }}>{ind?.bull_score ?? '—'}</span>
+              <span style={{ color: '#9e9e9e' }}>Sell pressure</span>
+              <span style={{ fontWeight: 700, color: '#ef5350' }}>{ind?.bear_score ?? '—'}</span>
+              <span style={{ color: '#9e9e9e' }}>Bias</span>
+              <span style={{ fontWeight: 700, color: confluenceBiasColor }}>{ind?.confluence_bias ?? '—'}</span>
+            </div>
+
+            {fusionScore && (
+              <div style={{
+                fontSize: '0.75rem',
+                marginBottom: 8,
+                padding: 8,
+                background: `${fusionColor}11`,
+                border: `1px solid ${fusionColor}33`,
+                borderRadius: 4,
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                  <span style={{ color: '#9e9e9e', textTransform: 'uppercase', fontSize: '0.65rem' }}>
+                    Decision strength
+                  </span>
+                  <span style={{ color: fusionColor, fontWeight: 700, fontSize: '0.85rem' }}>
+                    {fusionScore.fusion_score}
+                  </span>
+                </div>
+                <div style={{ color: fusionColor, fontWeight: 600, fontSize: '0.7rem', marginBottom: 4 }}>
+                  {fusionScore.fusion_signal}
+                </div>
+                <div style={{ color: '#9e9e9e', fontSize: '0.65rem', lineHeight: 1.45 }}>
+                  {fusionScore.reasoning}
+                </div>
+              </div>
+            )}
+
+            {confluenceData?.patterns?.bias_narrative && (
+              <div style={{ fontSize: '0.68rem', color: '#cbd5e1', lineHeight: 1.5 }}>
+                {confluenceData.patterns.bias_narrative}
+              </div>
+            )}
+
+            {confluenceError && (
+              <div style={{ fontSize: '0.65rem', color: '#ef5350', marginTop: 6 }}>
+                ⚠ {confluenceError}
+              </div>
+            )}
+
+            {confluenceLoading && !confluenceData && (
+              <div style={{ fontSize: '0.65rem', color: '#9e9e9e', marginTop: 6 }}>
+                Loading confluence summary…
+              </div>
+            )}
+            <div style={{ fontSize: '0.64rem', color: '#9e9e9e', marginTop: 6, lineHeight: 1.45 }}>
+              Higher scores mean more evidence is pointing the same way; lower scores mean the setup is still mixed.
+            </div>
+          {confluenceStrength && (
+            <div style={{ fontSize: '0.64rem', color: '#9e9e9e', marginTop: 4 }}>
+              Strength bucket: {confluenceStrength}
+            </div>
           )}
         </div>
       )}

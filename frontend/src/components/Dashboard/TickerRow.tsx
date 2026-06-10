@@ -55,11 +55,21 @@ const TickerRow: React.FC<TickerRowProps> = ({ ticker, selected, onClick, onRemo
   const showVwapBadge = !!recentVwapSignal && Math.abs(vwapDist ?? 0) < 1.0;
 
   const vwapLabel = showVwapBadge
-    ? (recentVwapSignal!.signal_type === 'vwap_reclaim' ? 'VWAP ▲' : 'VWAP ▼')
+    ? (recentVwapSignal!.signal_type === 'vwap_reclaim' ? 'VWAP BUY' : 'VWAP SELL')
     : null;
   const vwapColor = showVwapBadge
     ? (recentVwapSignal!.signal_type === 'vwap_reclaim' ? '#26a69a' : '#ef5350')
     : undefined;
+
+  const confluenceBias = ind?.confluence_bias ?? null;
+  const confluenceLabel = confluenceBias === 'BULL' ? 'BUY'
+    : confluenceBias === 'BEAR' ? 'SELL'
+    : confluenceBias === 'MIXED' ? 'MIXED'
+    : null;
+  const confluenceColor = confluenceBias === 'BULL' ? '#26a69a'
+    : confluenceBias === 'BEAR' ? '#ef5350'
+    : '#64748b';
+  const showConfluenceBadge = confluenceBias != null || confluenceStrength != null;
 
   const priceColor = ind?.ema_state === 'BULLISH' ? '#26a69a'
     : ind?.ema_state === 'BEARISH' ? '#ef5350'
@@ -94,17 +104,17 @@ const TickerRow: React.FC<TickerRowProps> = ({ ticker, selected, onClick, onRemo
               {vwapLabel}
             </span>
           )}
-          {confluenceStrength && (
+          {showConfluenceBadge && (
             <span style={{
               fontSize: '0.62rem', fontWeight: 700,
-              color: confluenceStrength === 'HIGH' ? '#26a69a' : confluenceStrength === 'MEDIUM' ? '#ff9800' : '#666',
-              background: confluenceStrength === 'HIGH' ? '#26a69a16' : confluenceStrength === 'MEDIUM' ? '#ff980016' : '#66666616',
-              border: confluenceStrength === 'HIGH' ? '1px solid #26a69a44' : confluenceStrength === 'MEDIUM' ? '1px solid #ff980044' : '1px solid #66666644',
+              color: confluenceColor,
+              background: `${confluenceColor}16`,
+              border: `1px solid ${confluenceColor}44`,
               borderRadius: 4,
               padding: '1px 5px',
               lineHeight: 1,
             }}>
-              {confluenceStrength === 'HIGH' ? '⚡ CONF' : confluenceStrength === 'MEDIUM' ? 'CONF' : 'conf'}
+              {confluenceLabel ?? 'MIXED'}
             </span>
           )}
         </span>

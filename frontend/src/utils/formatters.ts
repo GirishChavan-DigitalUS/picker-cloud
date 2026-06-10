@@ -52,9 +52,9 @@ export function confColor(c: number): string {
 }
 
 export function confLabel(c: number, n: number): string {
-  if (c >= 0.85) return `Extremely high conviction — ${n} signals in strong agreement`;
-  if (c >= 0.75) return `High conviction — clear directional alignment across signals`;
-  if (c >= 0.65) return `Moderate conviction — majority of signals lean this direction`;
-  if (c >= 0.55) return `Low conviction — marginal signal agreement; treat cautiously`;
-  return `Very low conviction — conflicting or weak signals`;
+  if (c >= 0.85) return `Very strong alignment: ${n} signals point the same way.`;
+  if (c >= 0.75) return `Strong alignment: most signals support this direction.`;
+  if (c >= 0.65) return `Moderate alignment: the majority leans this way, but not all signals agree.`;
+  if (c >= 0.55) return `Weak alignment: there is some support, but the setup is still mixed.`;
+  return `Very weak alignment: signals conflict or are too small to trust.`;
 }

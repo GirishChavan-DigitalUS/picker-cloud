@@ -5,7 +5,6 @@ import { API_BASE, formatPrice, confColor } from '../../utils/formatters';
 import CandlestickChart from '../Chart/CandlestickChart';
 import MarketReadPanel from './MarketReadPanel';
 import TrendStructureTimeline from './TrendStructureTimeline';
-import ConfluencePanel from './ConfluencePanel';
 
 interface ConfluenceSignal { label: string; side: 'bull' | 'bear'; }
 function computeConfluenceBreakdown(ind: import('../../stores/marketStore').IndicatorSnapshot | null, price: number | null): ConfluenceSignal[] {
@@ -95,7 +94,7 @@ const TickerDetail: React.FC<TickerDetailProps> = ({ ticker, onClose, historical
   const divStartPct = useRef(0);
 
   // Draggable AI/Indicators vertical divider
-  const [aiPct, setAiPct] = React.useState(70);
+  const [aiPct, setAiPct] = React.useState(62);
   const sidebarColRef = useRef<HTMLDivElement>(null);
   const sidebarDivDrag = useRef(false);
 
@@ -275,7 +274,7 @@ const TickerDetail: React.FC<TickerDetailProps> = ({ ticker, onClose, historical
           {/* Market Read card — merged AI Evaluation + Tape Read */}
           <div className="detail-card detail-card-scroll" style={{ flex: `0 0 calc(${aiPct}% - 3px)`, minHeight: 0, marginBottom: 0 }}>
             <h3>Market Read</h3>
-            <MarketReadPanel ticker={ticker} indicators={ind} prediction={pred} />
+            <MarketReadPanel ticker={ticker} currentPrice={state?.price ?? null} indicators={ind} prediction={pred} />
           </div>
 
           {/* Vertical drag handle between AI and Indicators */}
@@ -388,11 +387,6 @@ const TickerDetail: React.FC<TickerDetailProps> = ({ ticker, onClose, historical
               </div>
 
             </div>
-          </div>
-
-          {/* Confluence Levels — new section */}
-          <div className="detail-card detail-card-scroll" style={{ flex: '0 0 auto', marginTop: 0, maxHeight: '45vh' }}>
-            <ConfluencePanel ticker={ticker} currentPrice={state?.price ?? null} />
           </div>
 
         </div>{/* end sidebar */}

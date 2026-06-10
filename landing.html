@@ -819,7 +819,7 @@
       <div class="feat-card">
         <div class="feat-icon fi-purple">📡</div>
         <h3>Real-Time WebSocket Feed</h3>
-        <p>Prices, indicators, and AI signals update every 1 minute via persistent WebSocket. Auto-reconnects on disconnect. Zero page refreshes needed.</p>
+        <p>Prices, indicators, and AI signals stream via a persistent WebSocket with auto-reconnect and timeframe-aware routing. Zero page refreshes needed.</p>
       </div>
       <div class="feat-card">
         <div class="feat-icon fi-green">🤖</div>
@@ -845,6 +845,11 @@
         <div class="feat-icon fi-red">🚨</div>
         <h3>Composite Alert System</h3>
         <p>Five tiered pattern detectors (T1–T3): POWER_TREND, STRUCTURE_BREAK, VWAP_RESET, EXHAUSTION_REVERSAL, and POC_MAGNET. Alerts are batch-displayed per refresh cycle with tier filters and a manual ↻ Refresh button. Deduped within 15 minutes.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon fi-green">🧠</div>
+        <h3>Unified Market Read + Confluence</h3>
+        <p>Market Read now includes the confluence summary inline: BUY/SELL/MIXED bias, decision strength score, and plain-English explanation so non-traders can interpret signal alignment quickly.</p>
       </div>
       <div class="feat-card">
         <div class="feat-icon fi-blue">🔬</div>
@@ -879,7 +884,7 @@
       <div class="feat-card">
         <div class="feat-icon fi-orange">✔</div>
         <h3>Signal Context Layer</h3>
-        <p>Every card shows volume confirmation (rvol ×, HIGH/LOW/NORMAL), signal age in minutes (green = fresh, red = stale), and HTF daily bias tag. A “STALE” badge flags signals older than 8 minutes. A built-in <strong>? Help</strong> guide explains every element for new users.</p>
+        <p>Every card shows volume confirmation (rvol ×, HIGH/LOW/NORMAL), signal age in minutes (green = fresh, red = stale), HTF daily bias, and directional badges (VWAP BUY/SELL and Confluence BUY/SELL/MIXED). A built-in <strong>? Help</strong> guide explains each element for new users.</p>
       </div>
       <div class="feat-card">
         <div class="feat-icon fi-blue">⏱</div>
@@ -920,7 +925,7 @@
       <div class="step">
         <div class="step-num">4</div>
         <h4>Broadcast</h4>
-        <p>FastAPI WebSocket pushes price, indicator delta, and prediction to all connected clients instantly.</p>
+        <p>FastAPI WebSocket pushes price, indicator delta, and prediction to authenticated clients instantly.</p>
       </div>
       <div class="step">
         <div class="step-num">5</div>

@@ -296,7 +296,7 @@
     <div class="section-hdr">
       <div class="section-label">Cloud Deployment</div>
       <div class="section-title">AWS Infrastructure</div>
-      <div class="section-sub">Single EC2 t2.micro in us-east-1. Auto start 7:45 AM ET / stop 8:15 PM ET via Lambda + EventBridge. ~$1.80/month (free tier) or ~$8.42/month (post-free).</div>
+      <div class="section-sub">Single EC2 instance in us-east-1 (current t2.micro, recommended upgrade path: t3a.small for 2 GB RAM). Auto start 7:45 AM ET / stop 8:15 PM ET via Lambda + EventBridge.</div>
     </div>
     <div class="flow-row" style="margin-top:28px;align-items:stretch;gap:3px;">
       <div class="flow-box fb-orange" style="flex:none;width:160px;text-align:center;">
@@ -312,11 +312,11 @@
       </div>
       <div class="flow-arrow">&#8594;</div>
       <div class="flow-box fb-green" style="flex:2;text-align:center;">
-        <div class="fb-tag" style="color:var(--green)">EC2 t2.micro · us-east-1</div>
+        <div class="fb-tag" style="color:var(--green)">EC2 t2.micro (current) · t3a.small (recommended) · us-east-1</div>
         <h4 style="font-size:0.95rem;">nysepicker.duckdns.org</h4>
         <p style="font-size:0.78rem;margin-top:6px;">
           Amazon Linux 2023 &nbsp;|&nbsp; 8 GB gp3 EBS (encrypted) &nbsp;|&nbsp; systemd auto-restart<br>
-          <span style="color:var(--blue)">Nginx :80</span> &rarr; static <code style="font-size:0.7rem">frontend/dist/</code> &nbsp;&amp;&amp;&nbsp; proxy /api/, /ws &rarr; <span style="color:var(--green)">uvicorn 127.0.0.1:8000</span>
+          <span style="color:var(--blue)">Nginx :443 (TLS)</span> &rarr; static <code style="font-size:0.7rem">frontend/dist/</code> &nbsp;&amp;&amp;&nbsp; proxy /api/, /ws &rarr; <span style="color:var(--green)">uvicorn 127.0.0.1:8000</span>
         </p>
       </div>
       <div class="flow-arrow">&#8594;</div>
@@ -625,10 +625,14 @@
     <div class="section-hdr">
       <div class="section-label">REST + WebSocket API</div>
       <div class="section-title">Endpoints</div>
+      <div class="section-sub">All /api/* endpoints and /ws are protected by signed session cookies (except public health and auth bootstrap routes).</div>
     </div>
     <table class="api-table">
       <thead><tr><th>Method</th><th>Path</th><th>Description</th><th>Used by</th></tr></thead>
       <tbody>
+        <tr><td><span class="method m-post">POST</span></td><td class="route-path">/api/auth/login</td><td class="route-desc">Creates a signed session cookie after credential verification.</td><td><span class="tag">AuthGate/LoginPage</span></td></tr>
+        <tr><td><span class="method m-post">POST</span></td><td class="route-path">/api/auth/logout</td><td class="route-desc">Revokes current session and clears cookie.</td><td><span class="tag">AuthGate</span></td></tr>
+        <tr><td><span class="method m-get">GET</span></td><td class="route-path">/api/auth/me</td><td class="route-desc">Returns current authenticated user or 401 when unauthenticated.</td><td><span class="tag">AuthGate</span></td></tr>
         <tr><td><span class="method m-get">GET</span></td><td class="route-path">/api/dashboard</td><td class="route-desc">Latest indicators + prediction + price for every tracked ticker. Single-call hydration on startup.</td><td><span class="tag">App.tsx useEffect</span></td></tr>
         <tr><td><span class="method m-get">GET</span></td><td class="route-path">/api/candles/{ticker}</td><td class="route-desc">Returns up to N OHLCV bars. Query params: limit, today_only. Used to populate the chart on detail open.</td><td><span class="tag">TickerDetail</span></td></tr>
         <tr><td><span class="method m-get">GET</span></td><td class="route-path">/api/indicators/{ticker}</td><td class="route-desc">Latest indicator snapshot for one ticker from SQLite.</td><td><span class="tag">debug / direct</span></td></tr>

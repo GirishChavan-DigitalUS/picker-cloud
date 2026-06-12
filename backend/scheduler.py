@@ -272,6 +272,17 @@ async def _process_ticker(ticker: str, cycle_ts: str, tf: str) -> None:
     # Broadcast the FULL indicator snapshot so the frontend always has every
     # field up-to-date (ema9/21/50, vwap, rsi_14, rvol, orb levels, etc.)
     # without requiring an additional REST call.
+    # Broadcast a slim price_update with only the fields the frontend needs
+    # for live-updating dashboard cards and chart overlays. The full snapshot
+    # is available via the REST /dashboard endpoint on initial load.
+    _WS_FIELDS = (
+        "ema9", "ema21", "ema50", "ema_state", "vwap", "vwap_distance_pct",
+        "price_vs_vwap", "vwap_motion", "daily_trend", "rsi_14", "rsi_state",
+        "rvol", "volume_state", "nearest_support", "nearest_resistance",
+        "bull_score", "bear_score", "confluence_bias", "candle_structure",
+        "candle_patterns",
+    )
+    slim_snapshot = {k: snapshot.get(k) for k in _WS_FIELDS if snapshot.get(k) is not None}
     await broadcast({
         "type": "price_update",
         "data": {
@@ -279,7 +290,7 @@ async def _process_ticker(ticker: str, cycle_ts: str, tf: str) -> None:
             "price": current_price,
             "session": df["session"].iloc[-1],
             "timeframe": tf,
-            **snapshot,
+            **slim_snapshot,
         },
     })
 

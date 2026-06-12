@@ -109,9 +109,13 @@ CREATE TABLE IF NOT EXISTS predictions (
 );
 
 CREATE INDEX IF NOT EXISTS idx_candles_ticker_ts ON candles(ticker, timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_candles_ticker_tf_ts ON candles(ticker, timeframe, timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_indicators_ticker_ts ON indicators(ticker, timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_indicators_ticker_tf_ts ON indicators(ticker, timeframe, timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_signals_ticker_ts ON signals(ticker, timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_predictions_ticker_ts ON predictions(ticker, timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_predictions_ticker_tf_ts ON predictions(ticker, timeframe, timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_predictions_outcome ON predictions(outcome) WHERE outcome IS NULL;
 
 CREATE TABLE IF NOT EXISTS composite_alerts (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -129,6 +133,7 @@ CREATE TABLE IF NOT EXISTS composite_alerts (
 );
 
 CREATE INDEX IF NOT EXISTS idx_composite_alerts_ticker_ts ON composite_alerts(ticker, timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_composite_alerts_dedup ON composite_alerts(ticker, signal, timeframe, timestamp DESC);
 
 CREATE TABLE IF NOT EXISTS sessions (
     id          TEXT    PRIMARY KEY,

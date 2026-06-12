@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date, timedelta
 
 import pandas as pd
@@ -17,6 +18,10 @@ import yfinance as yf
 from config import classify_session, ET, TIMEFRAMES
 
 logger = logging.getLogger(__name__)
+
+# Dedicated thread pool for yfinance I/O — default executor on t3.small
+# has very few threads, causing ticker fetches to serialize.
+_yf_executor = ThreadPoolExecutor(max_workers=6, thread_name_prefix="yf")
 
 # Yahoo Finance symbol overrides
 YF_SYMBOL_MAP: dict[str, str] = {
@@ -61,7 +66,7 @@ class YFinanceFetcher:
         sym = yf_symbol(ticker)
         loop = asyncio.get_event_loop()
         df_raw = await loop.run_in_executor(
-            None, _fetch_sync, sym, tf_cfg["yf_interval"], tf_cfg["yf_period"]
+            _yf_executor, _fetch_sync, sym, tf_cfg["yf_interval"], tf_cfg["yf_period"]
         )
 
         if df_raw is None or df_raw.empty:

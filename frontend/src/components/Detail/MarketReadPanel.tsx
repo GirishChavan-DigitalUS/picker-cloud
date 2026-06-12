@@ -104,6 +104,9 @@ const MarketReadPanel: React.FC<MarketReadPanelProps> = ({ ticker, currentPrice,
   const [confluenceLoading, setConfluenceLoading] = React.useState(false);
   const [confluenceError, setConfluenceError] = React.useState<string | null>(null);
 
+  // Cache confluence data per ticker to avoid redundant fetches on quick switches
+  const confluenceCacheRef = React.useRef<Record<string, { data: ConfluencePayload; ts: number }>>({});
+
   const handleGenerate = React.useCallback(async () => {
     setLoading(true);
     setLlmError(null);
@@ -125,6 +128,14 @@ const MarketReadPanel: React.FC<MarketReadPanelProps> = ({ ticker, currentPrice,
     let cancelled = false;
 
     const loadConfluence = async () => {
+      // Use cached data if it's less than 5 minutes old for this ticker
+      const cached = confluenceCacheRef.current[ticker];
+      if (cached && Date.now() - cached.ts < 5 * 60 * 1000) {
+        if (!cancelled) setConfluenceData(cached.data);
+        if (!cancelled) setConfluenceLoading(false);
+        return;
+      }
+
       setConfluenceLoading(true);
       setConfluenceError(null);
 
@@ -140,7 +151,10 @@ const MarketReadPanel: React.FC<MarketReadPanelProps> = ({ ticker, currentPrice,
         if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
 
         const data = await res.json() as ConfluencePayload;
-        if (!cancelled) setConfluenceData(data);
+        if (!cancelled) {
+          setConfluenceData(data);
+          confluenceCacheRef.current[ticker] = { data, ts: Date.now() };
+        }
       } catch (e) {
         if (!cancelled) setConfluenceError(e instanceof Error ? e.message : 'Unable to load confluence');
       } finally {
@@ -323,20 +337,9 @@ const MarketReadPanel: React.FC<MarketReadPanelProps> = ({ ticker, currentPrice,
         <span style={{ fontSize: '0.6rem', fontWeight: 700, color: '#10b981', letterSpacing: '0.09em' }}>
           📊 MARKET READ
         </span>
-        <button
-          onClick={handleGenerate}
-          disabled={loading || !ind?.candle_structure}
-          style={{
-            fontSize: '0.6rem', fontWeight: 700, padding: '3px 10px',
-            borderRadius: 5, border: '1px solid rgba(16,185,129,0.4)',
-            background: loading ? 'rgba(16,185,129,0.05)' : 'rgba(16,185,129,0.12)',
-            color: loading ? '#9e9e9e' : '#10b981',
-            cursor: loading || !ind?.candle_structure ? 'not-allowed' : 'pointer',
-            transition: 'background 0.15s',
-          }}
-        >
-          {loading ? '⏳ Generating…' : narrativeLines ? '↻ Refresh' : '▶ Generate'}
-        </button>
+        <span style={{ fontSize: '0.55rem', color: '#9e9e9e', fontStyle: 'italic' }}>
+          LLM disabled
+        </span>
       </div>
 
       {llmError && (

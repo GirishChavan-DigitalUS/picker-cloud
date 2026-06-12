@@ -44,6 +44,9 @@ const CandlestickChart: React.FC<CandlestickChartProps> = ({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const priceLinesRef = useRef<any[]>([]);
 
+  // Cache EMA seeds for incremental computation
+  const emaCacheRef = useRef<{ len: number; ema9: number; ema21: number } | null>(null);
+
   // Session background overlay
   const overlayRef = useRef<HTMLCanvasElement>(null);
   const sessionRunsRef = useRef<Array<{ session: string; start: number; end: number }>>([]);
@@ -219,19 +222,49 @@ const CandlestickChart: React.FC<CandlestickChartProps> = ({
     };
 
     const closes = candles.map((c) => c.close);
-    const ema9vals = calcEma(closes, 9);
-    const ema21vals = calcEma(closes, 21);
 
-    const ema9Data = candles.map((c, i) => ({
-      time: toChartTime(c.timestamp) as unknown as import('lightweight-charts').Time,
-      value: ema9vals[i],
-    }));
-    const ema21Data = candles.map((c, i) => ({
-      time: toChartTime(c.timestamp) as unknown as import('lightweight-charts').Time,
-      value: ema21vals[i],
-    }));
-    ema9Ref.current?.setData(ema9Data);
-    ema21Ref.current?.setData(ema21Data);
+    // Incremental EMA: if only the last bar changed (same array length),
+    // reuse cached seeds and only compute the final value.
+    const cache = emaCacheRef.current;
+    let ema9vals: number[];
+    let ema21vals: number[];
+    if (cache && closes.length === cache.len && closes.length > 1) {
+      // Incremental — compute only the last EMA value from the cached seed
+      const k9 = 2 / 10, k21 = 2 / 22;
+      const lastClose = closes[closes.length - 1];
+      const newEma9 = lastClose * k9 + cache.ema9 * (1 - k9);
+      const newEma21 = lastClose * k21 + cache.ema21 * (1 - k21);
+      // Update only the last point on each series (avoids full setData)
+      const lastTime = toChartTime(candles[candles.length - 1].timestamp) as unknown as import('lightweight-charts').Time;
+      ema9Ref.current?.update({ time: lastTime, value: newEma9 });
+      ema21Ref.current?.update({ time: lastTime, value: newEma21 });
+      emaCacheRef.current = { len: closes.length, ema9: newEma9, ema21: newEma21 };
+      // Skip full setData below
+      ema9vals = [];
+      ema21vals = [];
+    } else {
+      // Full recalc (initial load or candle count changed)
+      ema9vals = calcEma(closes, 9);
+      ema21vals = calcEma(closes, 21);
+
+      const ema9Data = candles.map((c, i) => ({
+        time: toChartTime(c.timestamp) as unknown as import('lightweight-charts').Time,
+        value: ema9vals[i],
+      }));
+      const ema21Data = candles.map((c, i) => ({
+        time: toChartTime(c.timestamp) as unknown as import('lightweight-charts').Time,
+        value: ema21vals[i],
+      }));
+      ema9Ref.current?.setData(ema9Data);
+      ema21Ref.current?.setData(ema21Data);
+      if (closes.length > 0) {
+        emaCacheRef.current = {
+          len: closes.length,
+          ema9: ema9vals[ema9vals.length - 1],
+          ema21: ema21vals[ema21vals.length - 1],
+        };
+      }
+    }
 
     // VWAP — resets at each session boundary
     const vwapData: { time: import('lightweight-charts').Time; value: number }[] = [];

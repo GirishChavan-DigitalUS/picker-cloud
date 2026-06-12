@@ -559,12 +559,14 @@ async def list_sessions() -> list[dict]:
 
 async def log_login(username: str, ip: str, ua: str, success: bool) -> None:
     now = datetime.now(_tz.utc).isoformat()
+    cutoff = (datetime.now(_tz.utc) - timedelta(days=7)).isoformat()
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute(
             "INSERT INTO login_log (username, ip_address, user_agent, success, ts) "
             "VALUES (?, ?, ?, ?, ?)",
             (username, ip, ua, 1 if success else 0, now),
         )
+        await db.execute("DELETE FROM login_log WHERE ts < ?", (cutoff,))
         await db.commit()
 
 

@@ -3,7 +3,7 @@ import axios from 'axios';
 import { API_BASE } from '../../utils/formatters';
 
 interface Props {
-  onSuccess: () => void;
+  onSuccess: (username: string) => void;
 }
 
 const LoginPage: React.FC<Props> = ({ onSuccess }) => {
@@ -17,8 +17,8 @@ const LoginPage: React.FC<Props> = ({ onSuccess }) => {
     setError(null);
     setBusy(true);
     try {
-      await axios.post(`${API_BASE}/auth/login`, { username, password });
-      onSuccess();
+      const res = await axios.post(`${API_BASE}/auth/login`, { username, password });
+      onSuccess(res.data?.username ?? username);
     } catch (err: unknown) {
       const detail = (err as { response?: { data?: { detail?: string }; status?: number } })?.response;
       if (detail?.status === 401) {

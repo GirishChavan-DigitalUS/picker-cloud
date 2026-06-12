@@ -170,7 +170,7 @@ function App() {
     // weekends/holidays — the backend serves the most recent session's data.
     // Only LIVE WebSocket streaming is paused when the market is closed.
     displayTickers.forEach((ticker) => initTicker(ticker))
-    axios.get(`${API_BASE}/dashboard`, { params: { tickers: displayTickers.join(','), timeframe: selectedTimeframe } }).then((r) => {
+    axios.get(`${API_BASE}/dashboard`, { params: { tickers: displayTickers.join(','), timeframe: selectedTimeframe }, timeout: 10000 }).then((r) => {
       const dashboard = r.data.dashboard as Record<string, {
         indicators: Record<string, unknown> | null
         prediction: Record<string, unknown> | null
@@ -195,7 +195,7 @@ function App() {
   // the last cached session snapshot is shown.
   useEffect(() => {
     if (!initialized) return
-    axios.get(`${API_BASE}/dashboard`, { params: { tickers: displayTickers.join(','), timeframe: selectedTimeframe } }).then((r) => {
+    axios.get(`${API_BASE}/dashboard`, { params: { tickers: displayTickers.join(','), timeframe: selectedTimeframe }, timeout: 10000 }).then((r) => {
       const dashboard = r.data.dashboard as Record<string, {
         indicators: Record<string, unknown> | null
         prediction: Record<string, unknown> | null

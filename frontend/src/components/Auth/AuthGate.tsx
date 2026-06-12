@@ -74,7 +74,7 @@ const AuthGate: React.FC<Props> = ({ children }) => {
   }
 
   if (state === 'guest') {
-    return <LoginPage onSuccess={check} />;
+    return <LoginPage onSuccess={(u) => { setUsername(u); setState('authed'); }} />;
   }
 
   return (

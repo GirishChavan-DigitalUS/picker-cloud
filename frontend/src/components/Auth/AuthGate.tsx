@@ -22,12 +22,15 @@ interface Props {
  * /api → :8000 in dev so it's same-origin from the browser's perspective).
  */
 const AuthGate: React.FC<Props> = ({ children }) => {
-  const [state, setState] = useState<AuthState>('checking');
+  // Skip the /me check entirely if no session cookie exists — show login
+  // form immediately instead of blocking on a round-trip to the backend.
+  const hasCookie = document.cookie.includes('picker_session');
+  const [state, setState] = useState<AuthState>(hasCookie ? 'checking' : 'guest');
   const [username, setUsername] = useState<string>('');
 
   const check = () => {
     axios
-      .get<{ username: string }>(`${API_BASE}/auth/me`)
+      .get<{ username: string }>(`${API_BASE}/auth/me`, { timeout: 5000 })
       .then((r) => {
         setUsername(r.data?.username ?? '');
         setState('authed');
@@ -43,7 +46,7 @@ const AuthGate: React.FC<Props> = ({ children }) => {
   };
 
   useEffect(() => {
-    check();
+    if (state === 'checking') check();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

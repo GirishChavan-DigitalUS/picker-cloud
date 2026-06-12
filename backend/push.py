@@ -104,6 +104,7 @@ async def broadcast_push(alert: dict[str, Any]) -> None:
     direction: str = alert.get("direction", "")
     confidence: float = alert.get("ai_confidence", 0.0)
     tf: str = alert.get("timeframe", "")
+    price: float | None = alert.get("current_price")
 
     # Cross-TF dedup — prevents notification spam when the same setup fires
     # on multiple timeframes within a short window.
@@ -119,8 +120,9 @@ async def broadcast_push(alert: dict[str, Any]) -> None:
     signal_label = signal.replace("_", " ").title()
     tf_suffix = f" [{tf}]" if tf else ""
 
+    price_str = f" @ ${price:,.2f}" if price is not None else ""
     payload = {
-        "title": f"Picker {direction_arrow} {ticker} — {signal_label}{tf_suffix}",
+        "title": f"Picker {direction_arrow} {ticker}{price_str} — {signal_label}{tf_suffix}",
         "body": f"Tier {tier} · {confidence:.0%} confidence",
         "icon": "/pwa-192.png",
         "badge": "/pwa-192.png",
@@ -130,6 +132,7 @@ async def broadcast_push(alert: dict[str, Any]) -> None:
             "signal": signal,
             "tier": tier,
             "timeframe": tf,
+            "price": price,
             "url": f"/?ticker={ticker}",
         },
     }

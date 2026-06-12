@@ -310,11 +310,14 @@ async def _process_ticker(ticker: str, cycle_ts: str, tf: str) -> None:
         for alert in composite_alerts:
             alert["timeframe"] = tf
             alert["cycle_ts"] = cycle_ts
+            alert["current_price"] = current_price
             await db.insert_composite_alert(alert)
             if alert["signal"].startswith("POWER_TREND"):
                 _session_fired[(ticker, tf)].add(alert["signal"])
             await broadcast({"type": "composite_alert", "data": alert})
-            if alert.get("tier", 3) <= 2 and not alert.get("suppressed_by"):
+            if (alert.get("tier", 3) <= 2
+                    and not alert.get("suppressed_by")
+                    and alert.get("ai_confidence", 0) >= 0.85):
                 asyncio.create_task(broadcast_push(alert))
             logger.info("[%s tf=%s] COMPOSITE %s tier=%d conf=%.2f suppressed=%s",
                         ticker, tf, alert["signal"], alert["tier"],

@@ -13,7 +13,7 @@ logging.basicConfig(
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from db import init_db
+from db import init_db, close_pool
 from mcp_client import tv_mcp
 from scheduler import start_scheduler, stop_scheduler
 from auth import AuthMiddleware, router as auth_router, admin_router
@@ -38,6 +38,7 @@ async def lifespan(app: FastAPI):
     # Shutdown
     await stop_scheduler()
     await tv_mcp.disconnect()
+    await close_pool()
 
 
 app = FastAPI(title="Picker — NYSE Ticker Dashboard", version="1.0.0", lifespan=lifespan)

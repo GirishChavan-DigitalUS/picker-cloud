@@ -27,6 +27,9 @@ async def broadcast(payload: dict[str, Any]) -> None:
       - If `payload["data"]["timeframe"]` is set, only clients subscribed to
         that exact timeframe receive the message.
       - Otherwise (system messages, unscoped events), all clients receive it.
+
+    Sends to all matching clients concurrently via asyncio.gather for lower
+    latency when multiple clients are connected.
     """
     message = json.dumps(payload)
     msg_tf: str | None = None
@@ -35,16 +38,27 @@ async def broadcast(payload: dict[str, Any]) -> None:
         msg_tf = data.get("timeframe")
 
     async with _lock:
-        dead: list[WebSocket] = []
-        for ws, sub_tf in _subscriptions.items():
-            if msg_tf is not None and sub_tf != msg_tf:
-                continue
-            try:
-                await ws.send_text(message)
-            except Exception:
-                dead.append(ws)
-        for ws in dead:
-            _subscriptions.pop(ws, None)
+        targets = [
+            ws for ws, sub_tf in _subscriptions.items()
+            if msg_tf is None or sub_tf == msg_tf
+        ]
+
+    if not targets:
+        return
+
+    async def _send(ws: WebSocket) -> WebSocket | None:
+        try:
+            await ws.send_text(message)
+            return None
+        except Exception:
+            return ws
+
+    results = await asyncio.gather(*[_send(ws) for ws in targets])
+    dead = [ws for ws in results if ws is not None]
+    if dead:
+        async with _lock:
+            for ws in dead:
+                _subscriptions.pop(ws, None)
 
 
 def _parse_subscribe(text: str) -> str | None:

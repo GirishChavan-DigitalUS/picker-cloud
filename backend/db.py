@@ -1,8 +1,42 @@
 """
 Database initialisation and async helper utilities (aiosqlite).
+
+Performance: hot-path writes (scheduler) use a shared persistent connection
+(_write_conn) guarded by an asyncio lock, avoiding the overhead of opening
+and closing a connection on every INSERT/UPDATE.  Read-only route handlers
+still use get_db() which returns a fresh connection.
 """
+import asyncio
+
 import aiosqlite
 from config import DB_PATH
+
+# ---------------------------------------------------------------------------
+# Shared write connection — eliminates per-call connect/close overhead for the
+# scheduler hot path (~5-10 ms saved per DB operation × dozens per cycle).
+# ---------------------------------------------------------------------------
+_write_conn: aiosqlite.Connection | None = None
+_write_lock = asyncio.Lock()
+
+
+async def _get_write_conn() -> aiosqlite.Connection:
+    """Return the shared write connection, creating it on first call."""
+    global _write_conn
+    if _write_conn is None:
+        _write_conn = await aiosqlite.connect(DB_PATH)
+        await _write_conn.execute("PRAGMA journal_mode=WAL")
+        await _write_conn.execute("PRAGMA synchronous=NORMAL")
+        _write_conn.row_factory = aiosqlite.Row
+    return _write_conn
+
+
+async def close_pool() -> None:
+    """Close the shared write connection (called on shutdown)."""
+    global _write_conn
+    if _write_conn:
+        await _write_conn.close()
+        _write_conn = None
+
 
 CREATE_TABLES_SQL = """
 PRAGMA journal_mode=WAL;
@@ -253,8 +287,9 @@ async def get_db() -> aiosqlite.Connection:
 
 async def upsert_candles(ticker: str, bars: list[dict]) -> None:
     """Insert-or-replace a list of OHLCV bar dicts for a ticker."""
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.executemany(
+    conn = await _get_write_conn()
+    async with _write_lock:
+        await conn.executemany(
             """
             INSERT INTO candles (ticker, timestamp, timeframe, session, open, high, low, close, volume)
             VALUES (:ticker, :timestamp, :timeframe, :session, :open, :high, :low, :close, :volume)
@@ -268,7 +303,7 @@ async def upsert_candles(ticker: str, bars: list[dict]) -> None:
             """,
             [{"ticker": ticker, **bar} for bar in bars],
         )
-        await db.commit()
+        await conn.commit()
 
 
 async def upsert_indicator_snapshot(ticker: str, snapshot: dict, timeframe: str = "2m") -> None:
@@ -283,29 +318,32 @@ async def upsert_indicator_snapshot(ticker: str, snapshot: dict, timeframe: str 
         f"ON CONFLICT(ticker, timestamp) DO UPDATE SET "
         + ", ".join(f"{f} = excluded.{f}" for f in fields if f != "timestamp")
     )
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(sql, vals)
-        await db.commit()
+    conn = await _get_write_conn()
+    async with _write_lock:
+        await conn.execute(sql, vals)
+        await conn.commit()
 
 
 async def insert_signal(ticker: str, signal: dict) -> None:
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(
+    conn = await _get_write_conn()
+    async with _write_lock:
+        await conn.execute(
             "INSERT INTO signals (ticker, timestamp, signal_type, direction, details) "
             "VALUES (:ticker, :timestamp, :signal_type, :direction, :details)",
             {"ticker": ticker, **signal},
         )
-        await db.commit()
+        await conn.commit()
 
 
 async def insert_prediction(prediction: dict) -> int:
-    async with aiosqlite.connect(DB_PATH) as db:
-        cur = await db.execute(
+    conn = await _get_write_conn()
+    async with _write_lock:
+        cur = await conn.execute(
             "INSERT INTO predictions (ticker, timestamp, prediction, confidence, evidence, rules_triggered, notes, timeframe) "
             "VALUES (:ticker, :timestamp, :prediction, :confidence, :evidence, :rules_triggered, :notes, :timeframe)",
             prediction,
         )
-        await db.commit()
+        await conn.commit()
         return cur.lastrowid
 
 
@@ -321,12 +359,13 @@ async def get_all_latest_predictions() -> list[dict]:
 
 
 async def update_prediction_outcome(prediction_id: int, outcome: str, outcome_ts: str) -> None:
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(
+    conn = await _get_write_conn()
+    async with _write_lock:
+        await conn.execute(
             "UPDATE predictions SET outcome = ?, outcome_timestamp = ? WHERE id = ?",
             (outcome, outcome_ts, prediction_id),
         )
-        await db.commit()
+        await conn.commit()
 
 
 async def composite_alert_exists(
@@ -335,8 +374,8 @@ async def composite_alert_exists(
     """Return True if the same (ticker, signal, timeframe) alert was inserted recently."""
     from datetime import datetime, timezone, timedelta
     since = (datetime.now(timezone.utc) - timedelta(seconds=within_seconds)).isoformat()
-    async with aiosqlite.connect(DB_PATH) as conn:
-        conn.row_factory = aiosqlite.Row
+    conn = await _get_write_conn()
+    async with _write_lock:
         rows = await conn.execute_fetchall(
             "SELECT id FROM composite_alerts "
             "WHERE ticker=? AND signal=? AND timeframe=? AND timestamp >= ? LIMIT 1",
@@ -349,8 +388,9 @@ async def insert_composite_alert(alert: dict) -> None:
     import json as _json
     extra_keys = {"level_name", "level_price", "poc_level"}
     extra = {k: alert[k] for k in extra_keys if k in alert}
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(
+    conn = await _get_write_conn()
+    async with _write_lock:
+        await conn.execute(
             "INSERT INTO composite_alerts "
             "(ticker, timestamp, signal, direction, tier, ai_confidence, components, suppressed_by, timeframe, extra, cycle_ts) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -368,7 +408,7 @@ async def insert_composite_alert(alert: dict) -> None:
                 alert.get("cycle_ts"),
             ),
         )
-        await db.commit()
+        await conn.commit()
 
 
 async def get_composite_alerts(
@@ -471,14 +511,15 @@ from datetime import datetime, timedelta, timezone as _tz  # noqa: E402 — keep
 
 async def create_session(session_id: str, username: str, ip: str, ua: str) -> None:
     now = datetime.now(_tz.utc).isoformat()
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(
+    conn = await _get_write_conn()
+    async with _write_lock:
+        await conn.execute(
             "INSERT OR REPLACE INTO sessions "
             "(id, username, ip_address, user_agent, created_at, last_seen, is_active) "
             "VALUES (?, ?, ?, ?, ?, ?, 1)",
             (session_id, username, ip, ua, now, now),
         )
-        await db.commit()
+        await conn.commit()
 
 
 _SESSION_IDLE_SECS = 2 * 3600  # 2 hours idle → auto-expire
@@ -487,12 +528,13 @@ _SESSION_IDLE_SECS = 2 * 3600  # 2 hours idle → auto-expire
 async def expire_idle_sessions() -> int:
     """Mark sessions idle for too long as inactive."""
     cutoff = (datetime.now(_tz.utc) - timedelta(seconds=_SESSION_IDLE_SECS)).isoformat()
-    async with aiosqlite.connect(DB_PATH) as db:
-        cur = await db.execute(
+    conn = await _get_write_conn()
+    async with _write_lock:
+        cur = await conn.execute(
             "UPDATE sessions SET is_active=0 WHERE is_active=1 AND last_seen < ?",
             (cutoff,),
         )
-        await db.commit()
+        await conn.commit()
         return cur.rowcount or 0
 
 
@@ -500,9 +542,9 @@ async def get_session_user(session_id: str) -> str | None:
     """Validate session is active and not idle, update last_seen, return username or None."""
     now = datetime.now(_tz.utc)
     now_iso = now.isoformat()
-    async with aiosqlite.connect(DB_PATH) as db:
-        db.row_factory = aiosqlite.Row
-        async with db.execute(
+    conn = await _get_write_conn()
+    async with _write_lock:
+        async with conn.execute(
             "SELECT username, last_seen FROM sessions WHERE id=? AND is_active=1", (session_id,)
         ) as cur:
             row = await cur.fetchone()
@@ -517,20 +559,21 @@ async def get_session_user(session_id: str) -> str | None:
             if last.tzinfo is None:
                 last = last.replace(tzinfo=_tz.utc)
             if (now - last).total_seconds() > _SESSION_IDLE_SECS:
-                await db.execute("UPDATE sessions SET is_active=0 WHERE id=?", (session_id,))
-                await db.commit()
+                await conn.execute("UPDATE sessions SET is_active=0 WHERE id=?", (session_id,))
+                await conn.commit()
                 return None
         except Exception:
             pass  # malformed timestamp — let request through
-        await db.execute("UPDATE sessions SET last_seen=? WHERE id=?", (now_iso, session_id))
-        await db.commit()
+        await conn.execute("UPDATE sessions SET last_seen=? WHERE id=?", (now_iso, session_id))
+        await conn.commit()
         return row["username"]
 
 
 async def deactivate_session(session_id: str) -> None:
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute("UPDATE sessions SET is_active=0 WHERE id=?", (session_id,))
-        await db.commit()
+    conn = await _get_write_conn()
+    async with _write_lock:
+        await conn.execute("UPDATE sessions SET is_active=0 WHERE id=?", (session_id,))
+        await conn.commit()
 
 
 async def count_active_sessions(username: str) -> int:

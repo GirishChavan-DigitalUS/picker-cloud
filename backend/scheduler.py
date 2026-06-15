@@ -48,6 +48,26 @@ _prev_snapshot: dict[tuple[str, str], dict] = {}
 _session_fired: dict[tuple[str, str], set]  = {}
 _session_date:  str = ""
 
+# Concurrency limiter for yFinance — prevents hammering Yahoo servers.
+# 4 concurrent fetches keeps us well under rate-limit while still being
+# ~3× faster than the old sequential approach.
+_YF_SEMAPHORE: asyncio.Semaphore | None = None
+_YF_MAX_CONCURRENT = 4
+
+# Tracks tickers that have completed their first full candle load so that
+# subsequent cycles only upsert the most recent bars (not all 400).
+_candles_initialized: set[tuple[str, str]] = set()
+
+# Number of recent bars to upsert on incremental (non-first) cycles.
+_INCREMENTAL_BARS = 5
+
+
+def _get_semaphore() -> asyncio.Semaphore:
+    global _YF_SEMAPHORE
+    if _YF_SEMAPHORE is None:
+        _YF_SEMAPHORE = asyncio.Semaphore(_YF_MAX_CONCURRENT)
+    return _YF_SEMAPHORE
+
 
 async def start_scheduler() -> None:
     """Launch one fetch loop per configured timeframe."""
@@ -116,11 +136,24 @@ async def _run_cycle(tf: str) -> None:
         _session_fired.clear()
         logger.info("Session reset — new trading day")
 
-    for ticker in TICKERS:
+    t0 = asyncio.get_event_loop().time()
+
+    # Process all tickers concurrently, bounded by _YF_SEMAPHORE to respect
+    # yFinance rate limits.  Each coroutine acquires the semaphore before its
+    # network fetch, then releases it once the DataFrame is in hand — the
+    # indicator / DB / broadcast work proceeds without holding the permit.
+    sem = _get_semaphore()
+
+    async def _guarded(ticker: str) -> None:
         try:
-            await _process_ticker(ticker, cycle_ts, tf)
+            await _process_ticker(ticker, cycle_ts, tf, sem)
         except Exception as exc:
             logger.error("[%s tf=%s] cycle error: %s", ticker, tf, exc, exc_info=True)
+
+    await asyncio.gather(*[_guarded(t) for t in TICKERS])
+
+    elapsed = asyncio.get_event_loop().time() - t0
+    logger.info("--- All tickers done tf=%s  %.1fs ---", tf, elapsed)
 
     # Outcome resolution + ML retraining are tied to the primary TF only —
     # they operate on the predictions table which is fed by the primary loop.
@@ -133,18 +166,35 @@ async def _run_cycle(tf: str) -> None:
 async def process_ticker_once(ticker: str, tf: str = PRIMARY_TIMEFRAME) -> None:
     """Public wrapper — used by the on-demand /api/ticker/{ticker}/refresh endpoint."""
     cycle_ts = datetime.now(timezone.utc).isoformat()
+    # Force full candle load for on-demand refresh (no semaphore needed)
+    _candles_initialized.discard((ticker, tf))
     await _process_ticker(ticker, cycle_ts, tf)
 
 
-async def _process_ticker(ticker: str, cycle_ts: str, tf: str) -> None:
-    df, current_price = await tv_mcp.fetch_ticker(ticker, limit=OHLCV_FETCH_LIMIT, tf=tf)
+async def _process_ticker(ticker: str, cycle_ts: str, tf: str, sem: asyncio.Semaphore | None = None) -> None:
+    # Acquire semaphore ONLY for the yFinance fetch to cap concurrent HTTP
+    # requests, then release immediately so indicator computation / DB writes
+    # can proceed in parallel across tickers.
+    if sem is not None:
+        async with sem:
+            df, current_price = await tv_mcp.fetch_ticker(ticker, limit=OHLCV_FETCH_LIMIT, tf=tf)
+    else:
+        df, current_price = await tv_mcp.fetch_ticker(ticker, limit=OHLCV_FETCH_LIMIT, tf=tf)
 
     if df.empty:
         logger.warning("[%s tf=%s] no bars returned", ticker, tf)
         return
 
-    # --- Persist all bars (including in-progress last bar) for chart display ---
-    await db.upsert_candles(ticker, df.to_dict(orient="records"))
+    # --- Persist candles for chart display ---
+    # First cycle: full upsert (all bars) so the chart has history.
+    # Subsequent cycles: only upsert the last few bars (incremental).
+    key = (ticker, tf)
+    if key in _candles_initialized:
+        bars_to_write = df.tail(_INCREMENTAL_BARS).to_dict(orient="records")
+    else:
+        bars_to_write = df.to_dict(orient="records")
+        _candles_initialized.add(key)
+    await db.upsert_candles(ticker, bars_to_write)
 
     now_ts = datetime.now(timezone.utc).isoformat()
 

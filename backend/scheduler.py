@@ -138,8 +138,9 @@ async def _run_cycle(tf: str) -> None:
         # Prune old data once per day to prevent unbounded table growth.
         try:
             await db.prune_old_data()
+            await db.run_analyze()
         except Exception as exc:
-            logger.error("prune_old_data failed: %s", exc, exc_info=True)
+            logger.error("prune/analyze failed: %s", exc, exc_info=True)
 
     t0 = asyncio.get_event_loop().time()
 
@@ -148,17 +149,23 @@ async def _run_cycle(tf: str) -> None:
     # network fetch, then releases it once the DataFrame is in hand — the
     # indicator / DB / broadcast work proceeds without holding the permit.
     sem = _get_semaphore()
+    _failures = 0
 
     async def _guarded(ticker: str) -> None:
+        nonlocal _failures
         try:
             await _process_ticker(ticker, cycle_ts, tf, sem)
         except Exception as exc:
+            _failures += 1
             logger.error("[%s tf=%s] cycle error: %s", ticker, tf, exc, exc_info=True)
 
     await asyncio.gather(*[_guarded(t) for t in TICKERS])
 
     elapsed = asyncio.get_event_loop().time() - t0
-    logger.info("--- All tickers done tf=%s  %.1fs ---", tf, elapsed)
+    if _failures > len(TICKERS) * 0.5:
+        logger.critical("Scheduler failure rate %.0f%% (%d/%d) tf=%s — check yFinance / network",
+                        _failures / len(TICKERS) * 100, _failures, len(TICKERS), tf)
+    logger.info("--- All tickers done tf=%s  %.1fs  failures=%d/%d ---", tf, elapsed, _failures, len(TICKERS))
 
     # Outcome resolution + ML retraining are tied to the primary TF only —
     # they operate on the predictions table which is fed by the primary loop.
@@ -235,6 +242,14 @@ async def _process_ticker(ticker: str, cycle_ts: str, tf: str, sem: asyncio.Sema
     if rvol is not None:
         volume_state = "HIGH" if rvol > 1.5 else ("LOW" if rvol < 0.5 else "NORMAL")
 
+    # 3-bar slope (shared with evaluator to avoid recomputation)
+    slope_3bar: float | None = None
+    if len(closes) >= 3:
+        slope_3bar = round(float((closes.iloc[-1] - closes.iloc[-3]) / closes.iloc[-3]), 6)
+
+    # Volume ratio (same as rvol, for evaluator)
+    volume_ratio = rvol
+
     snapshot = {
         "timestamp": now_ts,
         **ema_data,
@@ -309,7 +324,11 @@ async def _process_ticker(ticker: str, cycle_ts: str, tf: str, sem: asyncio.Sema
         await broadcast({"type": "signal", "data": sig_with_tf})
 
     # --- AI evaluation ---
-    prediction = await run_evaluation(ticker, df_closed, current_price, snapshot, tf=tf)
+    prediction = await run_evaluation(
+        ticker, df_closed, current_price, snapshot, tf=tf,
+        precomputed={"recent_return": recent_return, "volatility": volatility,
+                     "slope_3bar": slope_3bar, "volume_ratio": volume_ratio},
+    )
     await broadcast({
         "type": "prediction",
         "data": {

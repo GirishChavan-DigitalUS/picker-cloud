@@ -179,11 +179,17 @@ class ConfluenceAnalyzer:
         bins = np.linspace(price_min, price_max, num_bins + 1)
         bin_volume = np.zeros(num_bins)
 
-        # Distribute each candle's volume across bins it touches
-        for _, row in df.iterrows():
-            bar_bins = np.where((bins[:-1] <= row["high"]) & (bins[1:] >= row["low"]))[0]
+        # Vectorized: extract arrays to avoid pandas iterrows overhead
+        highs = df[\"high\"].values.astype(float)
+        lows = df[\"low\"].values.astype(float)
+        volumes = df[\"volume\"].values.astype(float)
+        bin_starts = bins[:-1]
+        bin_ends = bins[1:]
+
+        for h, l, v in zip(highs, lows, volumes):
+            bar_bins = np.where((bin_starts <= h) & (bin_ends >= l))[0]
             if len(bar_bins) > 0:
-                bin_volume[bar_bins] += row["volume"] / len(bar_bins)
+                bin_volume[bar_bins] += v / len(bar_bins)
 
         # POC = bin with highest volume
         poc_idx = int(np.argmax(bin_volume))

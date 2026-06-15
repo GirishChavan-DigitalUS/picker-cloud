@@ -76,3 +76,32 @@ app.include_router(ws_router)
 @app.get("/api/health")
 async def health():
     return {"status": "ok", "data_source": "yfinance"}
+
+
+@app.get("/api/health/detailed")
+async def health_detailed():
+    """Extended health check for monitoring / support dashboards."""
+    import db as _hdb
+    from config import TICKERS
+    from scheduler import _tasks, _session_date
+
+    checks: dict = {"status": "ok", "data_source": "yfinance"}
+
+    # DB connectivity
+    try:
+        conn = await _hdb.get_db()
+        rows = await conn.execute_fetchall("SELECT COUNT(*) AS cnt FROM candles")
+        checks["db"] = "ok"
+        checks["candle_rows"] = rows[0]["cnt"] if rows else 0
+        await conn.close()
+    except Exception as e:
+        checks["db"] = f"error: {type(e).__name__}"
+        checks["status"] = "degraded"
+
+    # Scheduler
+    checks["scheduler_loops"] = list(_tasks.keys()) if _tasks else []
+    checks["scheduler_running"] = bool(_tasks)
+    checks["session_date"] = _session_date or None
+    checks["tickers_count"] = len(TICKERS)
+
+    return checks

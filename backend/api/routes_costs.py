@@ -84,7 +84,7 @@ def _load_summary() -> dict:
         )
     except (BotoCoreError, ClientError) as exc:
         logger.warning("Cost Explorer GetCostAndUsage failed: %s", exc)
-        raise HTTPException(502, f"AWS Cost Explorer error: {exc}")
+        raise HTTPException(502, "Unable to fetch cost data. Please try again later.")
 
     mtd_total = 0.0
     by_service: list[dict] = []

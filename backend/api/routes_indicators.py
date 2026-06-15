@@ -65,21 +65,24 @@ async def get_session_snapshot(
     Used by the frontend to display historical session data in after-hours / closed states.
     The last snapshot of a regular session corresponds to the ~15:58–16:00 ET bar.
     """
+    import re as _re
+    if not _re.match(r'^\d{4}-\d{2}-\d{2}$', trading_date):
+        raise HTTPException(status_code=400, detail="Invalid date format. Expected YYYY-MM-DD.")
     ticker = ticker.upper()
+    # Use index-friendly range query instead of LIKE
+    date_start = f"{trading_date}T00:00:00Z"
+    date_end   = f"{trading_date}T23:59:59Z"
     conn = await db.get_db()
     try:
-        # Last indicator snapshot whose UTC timestamp falls on the requested ET calendar date.
-        # Regular session bars are 09:30–16:00 ET which is always same calendar day in UTC.
         ind_rows = await conn.execute_fetchall(
-            "SELECT * FROM indicators WHERE ticker=? AND timestamp LIKE ? "
+            "SELECT * FROM indicators WHERE ticker=? AND timestamp >= ? AND timestamp <= ? "
             "ORDER BY timestamp DESC LIMIT 1",
-            (ticker, f"{trading_date}%"),
+            (ticker, date_start, date_end),
         )
-        # Last prediction for the same date
         pred_rows = await conn.execute_fetchall(
-            "SELECT * FROM predictions WHERE ticker=? AND timestamp LIKE ? "
+            "SELECT * FROM predictions WHERE ticker=? AND timestamp >= ? AND timestamp <= ? "
             "ORDER BY timestamp DESC LIMIT 1",
-            (ticker, f"{trading_date}%"),
+            (ticker, date_start, date_end),
         )
     finally:
         await conn.close()

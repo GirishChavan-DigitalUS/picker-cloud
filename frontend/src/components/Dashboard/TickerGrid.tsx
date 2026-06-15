@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useMarketStore } from '../../stores/marketStore';
 import TickerRow from './TickerRow';
 import ConfirmDialog from '../ConfirmDialog';
@@ -64,27 +64,27 @@ const TickerGrid: React.FC<TickerGridProps> = ({
     return () => { cancelled = true; clearInterval(interval); };
   }, [tickerKey]);
 
-  // AI sort order: highest prediction confidence first, regardless of UP/DOWN direction.
-  const aiConfidence = (ticker: string) => {
-    const conf = allPrices[ticker]?.latestPrediction?.confidence;
-    return typeof conf === 'number' ? conf : -1;
-  };
-
-  const sorted = [...tickers].sort((a, b) => {
-    if (sortBy === 'ticker') return a.localeCompare(b);
-    if (sortBy === 'price') {
-      const pa = allPrices[a]?.price ?? 0;
-      const pb = allPrices[b]?.price ?? 0;
-      return pb - pa;
-    }
-    if (sortBy === 'ai') {
-      const ca = aiConfidence(a);
-      const cb = aiConfidence(b);
-      if (ca !== cb) return cb - ca;
-      return a.localeCompare(b);
-    }
-    return 0;
-  });
+  const sorted = useMemo(() => {
+    const aiConfidence = (t: string) => {
+      const conf = allPrices[t]?.latestPrediction?.confidence;
+      return typeof conf === 'number' ? conf : -1;
+    };
+    return [...tickers].sort((a, b) => {
+      if (sortBy === 'ticker') return a.localeCompare(b);
+      if (sortBy === 'price') {
+        const pa = allPrices[a]?.price ?? 0;
+        const pb = allPrices[b]?.price ?? 0;
+        return pb - pa;
+      }
+      if (sortBy === 'ai') {
+        const ca = aiConfidence(a);
+        const cb = aiConfidence(b);
+        if (ca !== cb) return cb - ca;
+        return a.localeCompare(b);
+      }
+      return 0;
+    });
+  }, [tickers, sortBy, allPrices]);
 
   const handleAdd = async () => {
     const sym = inputVal.trim().toUpperCase();

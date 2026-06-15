@@ -128,4 +128,4 @@ const TickerRow: React.FC<TickerRowProps> = ({ ticker, selected, onClick, onRemo
   );
 };
 
-export default TickerRow;
+export default React.memo(TickerRow);

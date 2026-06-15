@@ -59,8 +59,11 @@ COOKIE_SAMESITE       = "strict"               # same-origin PWA; strict is safe
 HTPASSWD_PATH         = os.environ.get("PICKER_HTPASSWD_PATH", "/etc/nginx/.htpasswd-picker")
 DEV_USER              = os.environ.get("PICKER_DEV_USER")
 DEV_PASS              = os.environ.get("PICKER_DEV_PASS")
-APPUSER_SESSION_LIMIT = int(os.environ.get("APPUSER_SESSION_LIMIT", "5"))
+APPUSER_SESSION_LIMIT = int(os.environ.get("APPUSER_SESSION_LIMIT", "5"))LOGIN_RATE_LIMIT      = 5                      # max login attempts per IP per window
+LOGIN_RATE_WINDOW     = 300                     # 5-minute sliding window (seconds)
 
+# In-memory rate limiter for login attempts (per IP)
+_login_attempts: dict[str, list[float]] = {}
 _secret = os.environ.get("PICKER_AUTH_SECRET")
 if not _secret:
     _secret = secrets.token_urlsafe(32)
@@ -73,6 +76,7 @@ SERIALIZER = URLSafeTimedSerializer(_secret, salt="picker-session-v2")
 
 PUBLIC_PATHS: set[str] = {
     "/api/health",
+    "/api/health/detailed",
     "/api/auth/login",
     "/api/auth/logout",
     "/api/auth/me",
@@ -285,6 +289,18 @@ class LoginIn(BaseModel):
 async def login(body: LoginIn, request: Request, response: Response):
     ip = _get_ip(request)
     ua = request.headers.get("user-agent", "")
+
+    # Rate limit: max LOGIN_RATE_LIMIT attempts per IP within LOGIN_RATE_WINDOW seconds
+    import time as _time
+    now_ts = _time.monotonic()
+    attempts = _login_attempts.get(ip, [])
+    attempts = [t for t in attempts if now_ts - t < LOGIN_RATE_WINDOW]
+    if len(attempts) >= LOGIN_RATE_LIMIT:
+        log.warning("Login rate limit exceeded for IP %s (%d attempts)", ip, len(attempts))
+        raise HTTPException(status_code=429, detail="Too many login attempts. Try again later.")
+    attempts.append(now_ts)
+    _login_attempts[ip] = attempts
+
     # Normalise username here too so logs and session rows always store lowercase
     normalised_username = body.username.strip().lower()
     ok = verify_credentials(normalised_username, body.password)

@@ -336,6 +336,17 @@ async def prune_old_data() -> dict[str, int]:
     return stats
 
 
+async def run_analyze() -> None:
+    \"\"\"Run ANALYZE to update SQLite query planner statistics after pruning.\"\"\"
+    import logging
+    _log = logging.getLogger(__name__)
+    conn = await _get_write_conn()
+    async with _write_lock:
+        await conn.execute(\"ANALYZE\")
+        await conn.commit()
+    _log.info(\"ANALYZE complete\")
+
+
 async def upsert_candles(ticker: str, bars: list[dict]) -> None:
     """Insert-or-replace a list of OHLCV bar dicts for a ticker."""
     conn = await _get_write_conn()

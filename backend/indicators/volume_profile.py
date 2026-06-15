@@ -36,11 +36,18 @@ def compute_volume_profile(df: pd.DataFrame) -> dict:
     bins = np.linspace(price_min, price_max, _NUM_BINS + 1)
     bin_volume = np.zeros(_NUM_BINS)
 
-    for _, row in session_df.iterrows():
-        # Distribute bar volume evenly across bins that fall within [low, high]
-        bar_bins = np.where((bins[:-1] <= row["high"]) & (bins[1:] >= row["low"]))[0]
+    # Vectorized volume distribution: extract arrays and loop over numpy
+    # values directly (avoids pandas iterrows overhead).
+    highs = session_df["high"].values.astype(float)
+    lows = session_df["low"].values.astype(float)
+    volumes = session_df["volume"].values.astype(float)
+    bin_starts = bins[:-1]
+    bin_ends = bins[1:]
+
+    for h, l, v in zip(highs, lows, volumes):
+        bar_bins = np.where((bin_starts <= h) & (bin_ends >= l))[0]
         if len(bar_bins) > 0:
-            bin_volume[bar_bins] += row["volume"] / len(bar_bins)
+            bin_volume[bar_bins] += v / len(bar_bins)
 
     poc_idx = int(np.argmax(bin_volume))
     poc_price = (bins[poc_idx] + bins[poc_idx + 1]) / 2.0

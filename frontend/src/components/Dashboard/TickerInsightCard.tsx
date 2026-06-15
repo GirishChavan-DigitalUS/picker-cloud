@@ -528,4 +528,4 @@ const TickerInsightCard: React.FC<Props> = ({ ticker, isMobile, onOpenDetail }) 
   );
 };
 
-export default TickerInsightCard;
+export default React.memo(TickerInsightCard);

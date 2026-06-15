@@ -25,24 +25,32 @@ async def build_evidence(
     current_price: float,
     indicator_row: dict,
     tf: str = PRIMARY_TIMEFRAME,
+    precomputed: dict | None = None,
 ) -> EvidenceFields:
     """Assemble an EvidenceFields from a fresh indicator snapshot.
 
     `tf` is the active timeframe — carried through to the rule engine so
     momentum/slope thresholds scale appropriately for the bar duration.
-    """
-    closes = df["close"].astype(float)
-    recent_return = float((closes.iloc[-1] - closes.iloc[-2]) / closes.iloc[-2]) if len(closes) >= 2 else 0.0
-    volatility = float(closes.pct_change().dropna().tail(20).std()) if len(closes) >= 5 else 0.0
 
-    # 3-bar slope: (close[-1] - close[-3]) / close[-3] — smoother directional signal
-    slope_3bar: float | None = None
-    if len(closes) >= 3:
+    `precomputed` optionally supplies values already calculated by the
+    scheduler (recent_return, volatility, slope_3bar, volume_ratio) to
+    avoid redundant computation.
+    """
+    pc = precomputed or {}
+    closes = df["close"].astype(float)
+    recent_return = pc.get("recent_return")
+    if recent_return is None:
+        recent_return = float((closes.iloc[-1] - closes.iloc[-2]) / closes.iloc[-2]) if len(closes) >= 2 else 0.0
+    volatility = pc.get("volatility")
+    if volatility is None:
+        volatility = float(closes.pct_change().dropna().tail(20).std()) if len(closes) >= 5 else 0.0
+
+    slope_3bar = pc.get("slope_3bar")
+    if slope_3bar is None and len(closes) >= 3:
         slope_3bar = round(float((closes.iloc[-1] - closes.iloc[-3]) / closes.iloc[-3]), 6)
 
-    # Volume ratio: current bar vs 20-bar average of prior bars
-    volume_ratio: float | None = None
-    if "volume" in df.columns and len(df) >= 2:
+    volume_ratio = pc.get("volume_ratio")
+    if volume_ratio is None and "volume" in df.columns and len(df) >= 2:
         vols = df["volume"].astype(float)
         avg_vol = float(vols.iloc[:-1].tail(20).mean())
         if avg_vol > 0:
@@ -137,6 +145,7 @@ async def run_evaluation(
     current_price: float,
     indicator_row: dict,
     tf: str = PRIMARY_TIMEFRAME,
+    precomputed: dict | None = None,
 ) -> PredictionOutput:
     """
     Full evaluation pipeline:
@@ -146,7 +155,7 @@ async def run_evaluation(
     4. Log to DB
     5. Return PredictionOutput
     """
-    evidence = await build_evidence(ticker, df, current_price, indicator_row, tf=tf)
+    evidence = await build_evidence(ticker, df, current_price, indicator_row, tf=tf, precomputed=precomputed)
 
     # --- Rule engine ---
     rule_result = rule_evaluate(ticker, evidence)
@@ -201,39 +210,34 @@ async def resolve_outcomes() -> None:
     primary_horizon_min = TIMEFRAMES[PRIMARY_TIMEFRAME]["prediction_horizon_minutes"]
     conn = await db.get_db()
     try:
-        # Fetch predictions without outcomes (incl. tf so we can pick horizon)
         rows = await conn.execute_fetchall(
             "SELECT id, ticker, timestamp, prediction, timeframe FROM predictions WHERE outcome IS NULL"
         )
+        now = pd.Timestamp.now(tz="UTC")
+
         for row in rows:
             tf = (row["timeframe"] if "timeframe" in row.keys() else None) or PRIMARY_TIMEFRAME
             horizon_min = TIMEFRAMES.get(tf, {}).get("prediction_horizon_minutes", primary_horizon_min)
 
             pred_ts = pd.Timestamp(row["timestamp"], tz="UTC")
             horizon_ts = pred_ts + pd.Timedelta(minutes=horizon_min)
-            now = pd.Timestamp.now(tz="UTC")
 
             if now < horizon_ts:
                 continue  # not yet time
 
-            candles = await conn.execute_fetchall(
-                "SELECT close FROM candles WHERE ticker = ? AND timeframe = ? AND timestamp >= ? "
-                "ORDER BY timestamp ASC LIMIT 1",
-                (row["ticker"], tf, horizon_ts.isoformat()),
+            # Single query: fetch both entry and exit prices
+            prices = await conn.execute_fetchall(
+                "SELECT "
+                "  (SELECT close FROM candles WHERE ticker=? AND timeframe=? AND timestamp<=? ORDER BY timestamp DESC LIMIT 1) AS entry_price, "
+                "  (SELECT close FROM candles WHERE ticker=? AND timeframe=? AND timestamp>=? ORDER BY timestamp ASC LIMIT 1) AS exit_price",
+                (row["ticker"], tf, pred_ts.isoformat(),
+                 row["ticker"], tf, horizon_ts.isoformat()),
             )
-            if not candles:
+            if not prices or prices[0]["entry_price"] is None or prices[0]["exit_price"] is None:
                 continue
 
-            entry_candles = await conn.execute_fetchall(
-                "SELECT close FROM candles WHERE ticker = ? AND timeframe = ? AND timestamp <= ? "
-                "ORDER BY timestamp DESC LIMIT 1",
-                (row["ticker"], tf, pred_ts.isoformat()),
-            )
-            if not entry_candles:
-                continue
-
-            entry_price = float(entry_candles[0]["close"])
-            exit_price = float(candles[0]["close"])
+            entry_price = float(prices[0]["entry_price"])
+            exit_price = float(prices[0]["exit_price"])
             ret = (exit_price - entry_price) / entry_price
 
             if ret > 0.001:

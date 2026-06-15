@@ -95,10 +95,10 @@ interface ConfluencePayload {
 }
 
 const MarketReadPanel: React.FC<MarketReadPanelProps> = ({ ticker, currentPrice, indicators: ind, prediction: pred }) => {
-  // ── On-demand LLM state ────────────────────────────────────────────────────
-  const [loading, setLoading] = React.useState(false);
-  const [localResult, setLocalResult] = React.useState<{ ticker: string; narrative: string } | null>(null);
-  const [llmError, setLlmError] = React.useState<string | null>(null);
+  // ── On-demand LLM state (tape-read disabled for performance; read-side still rendered) ──
+  const [loading] = React.useState(false);
+  const [localResult] = React.useState<{ ticker: string; narrative: string } | null>(null);
+  const [llmError] = React.useState<string | null>(null);
   const [signalsOpen, setSignalsOpen] = React.useState(true);
   const [confluenceData, setConfluenceData] = React.useState<ConfluencePayload | null>(null);
   const [confluenceLoading, setConfluenceLoading] = React.useState(false);
@@ -106,23 +106,6 @@ const MarketReadPanel: React.FC<MarketReadPanelProps> = ({ ticker, currentPrice,
 
   // Cache confluence data per ticker to avoid redundant fetches on quick switches
   const confluenceCacheRef = React.useRef<Record<string, { data: ConfluencePayload; ts: number }>>({});
-
-  const handleGenerate = React.useCallback(async () => {
-    setLoading(true);
-    setLlmError(null);
-    try {
-      const res = await fetch(`/api/indicators/${ticker}/tape-read`, { method: 'POST' });
-      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-      const data = await res.json() as { tape_read_narrative?: string };
-      if (data.tape_read_narrative) {
-        setLocalResult({ ticker, narrative: data.tape_read_narrative });
-      }
-    } catch (e) {
-      setLlmError(e instanceof Error ? e.message : 'Request failed');
-    } finally {
-      setLoading(false);
-    }
-  }, [ticker]);
 
   React.useEffect(() => {
     let cancelled = false;

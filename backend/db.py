@@ -320,11 +320,21 @@ async def prune_old_data() -> dict[str, int]:
         cutoff_ts = f"{cutoff_date}T00:00:00Z"
 
         stats: dict[str, int] = {}
-        for table in ("candles", "indicators", "signals", "predictions", "composite_alerts"):
+        for table in ("candles", "indicators", "signals", "composite_alerts"):
             cur = await conn.execute(
                 f"DELETE FROM {table} WHERE timestamp < ?", (cutoff_ts,)
             )
             stats[table] = cur.rowcount or 0
+
+        # Predictions use a longer retention window (90 days) so the ML model
+        # retains enough resolved outcomes for retraining.
+        from datetime import datetime, timedelta, timezone
+        cutoff_dt = datetime.fromisoformat(cutoff_date).replace(tzinfo=timezone.utc)
+        pred_cutoff = (cutoff_dt - timedelta(days=90)).isoformat()
+        cur = await conn.execute(
+            "DELETE FROM predictions WHERE timestamp < ?", (pred_cutoff,)
+        )
+        stats["predictions"] = cur.rowcount or 0
 
         await conn.commit()
 

@@ -363,7 +363,8 @@ async def list_sessions_endpoint(_admin: str = Depends(require_admin)):
 @admin_router.delete("/sessions/{session_id}")
 async def kill_session(session_id: str, _admin: str = Depends(require_admin)):
     await _db.deactivate_session(session_id)
-    return {"ok": True}
+    logger.info("Session %s revoked by admin %s", session_id, _admin)
+    return {"ok": True, "deleted_session_id": session_id, "deleted_by": _admin}
 
 
 @admin_router.get("/login-history")

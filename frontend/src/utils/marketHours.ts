@@ -8,7 +8,7 @@ export type MarketState = 'PRE_MARKET' | 'REGULAR' | 'AFTER_HOURS' | 'CLOSED' | 
 // ── Dev override ─────────────────────────────────────────────────────────────
 // Set to true to force REGULAR state regardless of actual time/day.
 export const DEV_OVERRIDE: boolean =
-  (import.meta.env.VITE_MARKET_DEV_OVERRIDE ?? 'false') === 'true';
+  import.meta.env.DEV && (import.meta.env.VITE_MARKET_DEV_OVERRIDE ?? 'false') === 'true';
 
 // ── Holiday / early-close data ───────────────────────────────────────────────
 
@@ -67,6 +67,37 @@ const HOLIDAYS: HolidayEntry[] = [
   { date: '2026-07-02', name: 'Independence Day Eve',      earlyClose: '13:00' },
   { date: '2026-11-27', name: 'Day After Thanksgiving',    earlyClose: '13:00' },
   { date: '2026-12-24', name: 'Christmas Eve',             earlyClose: '13:00' },
+
+  // ── 2027 ─────────────────────────────────────────────────────────────────
+  { date: '2027-01-01', name: "New Year's Day" },
+  { date: '2027-01-18', name: 'MLK Jr. Day' },
+  { date: '2027-02-15', name: "Presidents' Day" },
+  { date: '2027-03-26', name: 'Good Friday' },
+  { date: '2027-05-31', name: 'Memorial Day' },
+  { date: '2027-06-18', name: 'Juneteenth (Observed)' },  // Jun 19 falls on Saturday
+  { date: '2027-07-05', name: 'Independence Day (Observed)' }, // Jul 4 falls on Sunday
+  { date: '2027-09-06', name: 'Labor Day' },
+  { date: '2027-11-25', name: 'Thanksgiving Day' },
+  { date: '2027-12-24', name: 'Christmas Day (Observed)' }, // Dec 25 falls on Saturday
+  // Early closes 2027
+  { date: '2027-07-02', name: 'Independence Day Eve',      earlyClose: '13:00' },
+  { date: '2027-11-26', name: 'Day After Thanksgiving',    earlyClose: '13:00' },
+  { date: '2027-12-23', name: 'Christmas Eve (Observed)',   earlyClose: '13:00' },
+
+  // ── 2028 ─────────────────────────────────────────────────────────────────
+  { date: '2028-01-17', name: 'MLK Jr. Day' },
+  { date: '2028-02-21', name: "Presidents' Day" },
+  { date: '2028-04-14', name: 'Good Friday' },
+  { date: '2028-05-29', name: 'Memorial Day' },
+  { date: '2028-06-19', name: 'Juneteenth' },
+  { date: '2028-07-04', name: 'Independence Day' },
+  { date: '2028-09-04', name: 'Labor Day' },
+  { date: '2028-11-23', name: 'Thanksgiving Day' },
+  { date: '2028-12-25', name: 'Christmas Day' },
+  // Early closes 2028
+  { date: '2028-07-03', name: 'Independence Day Eve',      earlyClose: '13:00' },
+  { date: '2028-11-24', name: 'Day After Thanksgiving',    earlyClose: '13:00' },
+  { date: '2028-12-22', name: 'Christmas Eve (Observed)',   earlyClose: '13:00' },
 ];
 
 // ── Internal ET helpers ───────────────────────────────────────────────────────

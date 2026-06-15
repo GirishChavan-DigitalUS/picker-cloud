@@ -5,6 +5,7 @@ import { registerSW } from 'virtual:pwa-register'
 import './index.css'
 import App from './App.tsx'
 import AuthGate from './components/Auth/AuthGate'
+import ErrorBoundary from './components/ErrorBoundary'
 
 // Send cookies on every request (needed for the auth session cookie).
 axios.defaults.withCredentials = true
@@ -42,8 +43,10 @@ if ('serviceWorker' in navigator) {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <AuthGate>
-      <App />
-    </AuthGate>
+    <ErrorBoundary>
+      <AuthGate>
+        <App />
+      </AuthGate>
+    </ErrorBoundary>
   </StrictMode>,
 )

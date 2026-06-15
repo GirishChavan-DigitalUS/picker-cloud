@@ -214,7 +214,7 @@ async def refresh_ticker(ticker: str):
         await process_ticker_once(ticker)
     except Exception as exc:
         logger.error("refresh_ticker [%s] failed: %s", ticker, exc, exc_info=True)
-        raise HTTPException(status_code=500, detail=str(exc))
+        raise HTTPException(status_code=500, detail="Ticker refresh failed. Please try again later.")
     conn = await db.get_db()
     try:
         ind_rows = await conn.execute_fetchall(

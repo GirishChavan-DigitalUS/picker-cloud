@@ -401,16 +401,17 @@ Resources:
         - { Key: Project, Value: picker }
 
   # ----------------------------------------------------------------------------
-  # EventBridge Rules — daily start/stop schedule (UTC, no DST adjustment)
-  #   Start:  11:45 UTC = 7:45 AM EDT  (6:45 AM EST in winter)
-  #   Stop:   00:15 UTC = 8:15 PM EDT  (7:15 PM EST in winter)
+  # EventBridge Rules — weekday start/stop schedule (UTC)
+  #   CST (UTC-6) does not observe DST, so offsets are fixed year-round.
+  #   Start:  13:00 UTC = 7:00 AM CST  (Mon–Fri only)
+  #   Stop:   22:00 UTC = 4:00 PM CST  (Mon–Fri only)
   # ----------------------------------------------------------------------------
   PickerStartEventRule:
     Type: AWS::Events::Rule
     Properties:
       Name: picker-ec2-start-schedule
-      Description: Start Picker EC2 at 7:45 AM ET (11:45 UTC) - every day
-      ScheduleExpression: 'cron(45 11 * * ? *)'
+      Description: Start Picker EC2 at 7:00 AM CST Mon-Fri (13:00 UTC)
+      ScheduleExpression: 'cron(0 13 ? * MON-FRI *)'
       State: ENABLED
       Targets:
         - Id: picker-start-lambda-target
@@ -420,8 +421,8 @@ Resources:
     Type: AWS::Events::Rule
     Properties:
       Name: picker-ec2-stop-schedule
-      Description: Stop Picker EC2 at 8:15 PM ET (00:15 UTC) - every day
-      ScheduleExpression: 'cron(15 0 * * ? *)'
+      Description: Stop Picker EC2 at 4:00 PM CST Mon-Fri (22:00 UTC)
+      ScheduleExpression: 'cron(0 22 ? * MON-FRI *)'
       State: ENABLED
       Targets:
         - Id: picker-stop-lambda-target

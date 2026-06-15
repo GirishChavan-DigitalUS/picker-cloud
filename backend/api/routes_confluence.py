@@ -14,6 +14,32 @@ logger = logging.getLogger(__name__)
 _analyzer = ConfluenceAnalyzer()
 
 
+@router.get("/confluence/batch")
+async def get_confluence_batch(
+    tickers: str = Query(..., description="Comma-separated ticker symbols"),
+):
+    """
+    Batch fetch confluence strength for multiple tickers in a single request.
+    Returns a dict of ticker → confluence_strength (or null).
+    """
+    ticker_list = [t.strip().upper() for t in tickers.split(",") if t.strip()]
+    results: dict[str, str | None] = {}
+
+    for ticker in ticker_list:
+        try:
+            levels = {
+                "daily": _analyzer.get_or_refresh_levels(ticker, "daily"),
+                "weekly": _analyzer.get_or_refresh_levels(ticker, "weekly"),
+                "monthly": _analyzer.get_or_refresh_levels(ticker, "monthly"),
+            }
+            patterns = _analyzer.detect_patterns(0, levels)  # price=0 → strength only
+            results[ticker] = patterns.get("confluence_strength") if patterns else None
+        except Exception:
+            results[ticker] = None
+
+    return {"strengths": results}
+
+
 @router.get("/confluence/{ticker}")
 async def get_confluence_levels(
     ticker: str,

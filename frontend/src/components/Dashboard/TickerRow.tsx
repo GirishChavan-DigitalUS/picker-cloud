@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useMarketStore } from '../../stores/marketStore';
 import { formatPrice } from '../../utils/formatters';
 import ConfirmDialog from '../ConfirmDialog';
@@ -8,9 +8,10 @@ interface TickerRowProps {
   selected: boolean;
   onClick: () => void;
   onRemove: () => void;
+  confluenceStrength?: string | null;
 }
 
-const TickerRow: React.FC<TickerRowProps> = ({ ticker, selected, onClick, onRemove }) => {
+const TickerRow: React.FC<TickerRowProps> = ({ ticker, selected, onClick, onRemove, confluenceStrength }) => {
   const state = useMarketStore((s) => s.tickers[ticker]);
   const signals = useMarketStore((s) => s.signals);
   const ind = state?.indicators ?? null;
@@ -18,34 +19,11 @@ const TickerRow: React.FC<TickerRowProps> = ({ ticker, selected, onClick, onRemo
   const [hovering, setHovering] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [now, setNow] = useState(() => Date.now());
-  const [confluenceStrength, setConfluenceStrength] = useState<string | null>(null);
 
-  useEffect(() => {
+  React.useEffect(() => {
     const interval = window.setInterval(() => setNow(Date.now()), 15_000);
     return () => window.clearInterval(interval);
   }, []);
-
-  // Fetch confluence strength
-  useEffect(() => {
-    const fetchConfluence = async () => {
-      try {
-        const params = new URLSearchParams();
-        if (state?.price) params.append('current_price', state.price.toString());
-        const res = await fetch(`/api/confluence/${ticker}?${params}`);
-        const data = await res.json();
-        setConfluenceStrength(data.patterns?.confluence_strength || null);
-      } catch {
-        // Silently fail, optional feature
-      }
-    };
-
-    if (state?.price) {
-      fetchConfluence();
-      // Refresh every 5 minutes
-      const interval = setInterval(fetchConfluence, 5 * 60 * 1000);
-      return () => clearInterval(interval);
-    }
-  }, [ticker, state?.price]);
 
   const recentVwapSignal = [...signals]
     .filter((sig) => sig.ticker === ticker && ['vwap_reclaim', 'vwap_breakdown'].includes(sig.signal_type))

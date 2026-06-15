@@ -144,12 +144,14 @@ CREATE TABLE IF NOT EXISTS predictions (
 
 CREATE INDEX IF NOT EXISTS idx_candles_ticker_ts ON candles(ticker, timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_candles_ticker_tf_ts ON candles(ticker, timeframe, timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_candles_ticker_session_ts ON candles(ticker, session, timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_indicators_ticker_ts ON indicators(ticker, timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_indicators_ticker_tf_ts ON indicators(ticker, timeframe, timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_signals_ticker_ts ON signals(ticker, timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_predictions_ticker_ts ON predictions(ticker, timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_predictions_ticker_tf_ts ON predictions(ticker, timeframe, timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_predictions_outcome ON predictions(outcome) WHERE outcome IS NULL;
+CREATE INDEX IF NOT EXISTS idx_predictions_ticker_outcome ON predictions(ticker, outcome);
 
 CREATE TABLE IF NOT EXISTS composite_alerts (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -168,6 +170,7 @@ CREATE TABLE IF NOT EXISTS composite_alerts (
 
 CREATE INDEX IF NOT EXISTS idx_composite_alerts_ticker_ts ON composite_alerts(ticker, timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_composite_alerts_dedup ON composite_alerts(ticker, signal, timeframe, timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_composite_alerts_cycle ON composite_alerts(ticker, timeframe, cycle_ts DESC);
 
 CREATE TABLE IF NOT EXISTS sessions (
     id          TEXT    PRIMARY KEY,
@@ -283,6 +286,54 @@ async def get_db() -> aiosqlite.Connection:
     db = await aiosqlite.connect(DB_PATH)
     db.row_factory = aiosqlite.Row
     return db
+
+
+# ---------------------------------------------------------------------------
+# Data pruning — keep only the last trading day to prevent table bloat.
+# On weekends/holidays the most recent regular-session date is retained.
+# Called once per day from the scheduler on session reset.
+# ---------------------------------------------------------------------------
+
+async def prune_old_data() -> dict[str, int]:
+    """Delete rows older than the last trading day.
+
+    Returns dict of {table: rows_deleted}.
+    """
+    import logging
+    _log = logging.getLogger(__name__)
+
+    conn = await _get_write_conn()
+    async with _write_lock:
+        # Find the most recent regular-session date in the candles table.
+        # This correctly handles weekends/holidays — the latest date with
+        # actual regular-session bars is kept.
+        row = await conn.execute_fetchall(
+            "SELECT MAX(DATE(timestamp)) AS latest_date FROM candles "
+            "WHERE session = 'regular'"
+        )
+        if not row or row[0]["latest_date"] is None:
+            _log.info("prune: no regular-session data found, skipping")
+            return {}
+
+        cutoff_date = row[0]["latest_date"]  # e.g. '2026-06-13'
+        # Keep everything from 00:00 UTC on cutoff_date onward (includes pre-market of that day)
+        cutoff_ts = f"{cutoff_date}T00:00:00Z"
+
+        stats: dict[str, int] = {}
+        for table in ("candles", "indicators", "signals", "predictions", "composite_alerts"):
+            cur = await conn.execute(
+                f"DELETE FROM {table} WHERE timestamp < ?", (cutoff_ts,)
+            )
+            stats[table] = cur.rowcount or 0
+
+        await conn.commit()
+
+    total = sum(stats.values())
+    if total > 0:
+        _log.info("prune: deleted %d rows (cutoff=%s) %s", total, cutoff_ts, stats)
+    else:
+        _log.info("prune: nothing to delete (cutoff=%s)", cutoff_ts)
+    return stats
 
 
 async def upsert_candles(ticker: str, bars: list[dict]) -> None:

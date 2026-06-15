@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useMarketStore } from '../../stores/marketStore';
 import TickerRow from './TickerRow';
 import ConfirmDialog from '../ConfirmDialog';
+import { API_BASE } from '../../utils/formatters';
 
 interface TickerGridProps {
   tickers: string[];
@@ -42,6 +43,26 @@ const TickerGrid: React.FC<TickerGridProps> = ({
   const [addLoading, setAddLoading] = useState(false);
   const [confirmAdd, setConfirmAdd] = useState<string | null>(null);
   const allPrices = useMarketStore((s) => s.tickers);
+
+  // Batch-fetch confluence strength for all tickers in a single request
+  // instead of N individual fetches per TickerRow.
+  const [confluenceMap, setConfluenceMap] = useState<Record<string, string | null>>({});
+  const tickerKey = tickers.join(',');
+  useEffect(() => {
+    if (!tickerKey) return;
+    let cancelled = false;
+    const fetchBatch = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/confluence/batch?tickers=${tickerKey}`);
+        if (!res.ok) return;
+        const data = await res.json() as { strengths: Record<string, string | null> };
+        if (!cancelled) setConfluenceMap(data.strengths);
+      } catch { /* optional feature */ }
+    };
+    fetchBatch();
+    const interval = setInterval(fetchBatch, 5 * 60_000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [tickerKey]);
 
   // AI sort order: highest prediction confidence first, regardless of UP/DOWN direction.
   const aiConfidence = (ticker: string) => {
@@ -155,6 +176,7 @@ const TickerGrid: React.FC<TickerGridProps> = ({
                 selected={selectedTicker === ticker}
                 onClick={() => onSelectTicker(ticker)}
                 onRemove={() => onRemoveTicker(ticker)}
+                confluenceStrength={confluenceMap[ticker]}
               />
             ))}
           </tbody>

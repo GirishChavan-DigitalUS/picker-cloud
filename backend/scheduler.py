@@ -135,6 +135,11 @@ async def _run_cycle(tf: str) -> None:
         _session_date = today
         _session_fired.clear()
         logger.info("Session reset — new trading day")
+        # Prune old data once per day to prevent unbounded table growth.
+        try:
+            await db.prune_old_data()
+        except Exception as exc:
+            logger.error("prune_old_data failed: %s", exc, exc_info=True)
 
     t0 = asyncio.get_event_loop().time()
 

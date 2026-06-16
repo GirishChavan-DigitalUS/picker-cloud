@@ -45,29 +45,99 @@ body {
   background: var(--surface);
   border-bottom: 1px solid var(--border);
 }
-.header-controls { display: flex; align-items: center; gap: 12px; }
+.header-controls { display: flex; align-items: center; gap: 6px; }
 .header-controls > * { flex-shrink: 0; }
+
+/* ── Header button system ── */
+.hdr-group {
+  display: flex; align-items: center; gap: 4px; flex-shrink: 0;
+}
+.hdr-divider {
+  width: 1px; height: 18px; background: var(--border); flex-shrink: 0; opacity: 0.6;
+  margin: 0 2px;
+}
+.hdr-btn {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 5px; padding: 4px 8px; cursor: pointer;
+  color: var(--muted); font-size: 0.68rem; font-weight: 600;
+  display: flex; align-items: center; justify-content: center; gap: 3px; flex-shrink: 0;
+  line-height: 1; letter-spacing: 0.02em;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.hdr-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+.hdr-btn--icon {
+  width: 28px; height: 26px; padding: 0; font-size: 0.82rem;
+}
+.hdr-btn--danger { color: #ef5350; }
+.hdr-btn--danger:hover { background: rgba(239,83,80,0.85); color: #fff; border-color: #ef5350; }
+
+/* Dropdown menu */
+.hdr-dropdown {
+  position: absolute; top: calc(100% + 4px); right: 0; z-index: 999;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 6px; padding: 4px; min-width: 120;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.55);
+  display: flex; flex-direction: column; gap: 1px;
+}
+.hdr-dropdown-item {
+  color: var(--text); font-size: 0.72rem; font-weight: 500;
+  padding: 6px 10px; border-radius: 4px;
+  text-decoration: none; display: flex; align-items: center; gap: 6px;
+  transition: background 0.12s;
+}
+.hdr-dropdown-item:hover { background: rgba(124,77,255,0.15); color: #fff; }
+
+/* Alert badge (desktop) */
+.hdr-badge {
+  position: absolute; top: -5px; right: -7px;
+  background: #ef5350; color: #fff;
+  font-size: 0.58rem; font-weight: 700;
+  border-radius: 50%; min-width: 16px; height: 16px;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0 3px; line-height: 1;
+  box-shadow: 0 0 0 2px var(--surface);
+}
+
+/* Status cluster */
+.hdr-status {
+  display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+  padding-left: 4px; border-left: 1px solid var(--border);
+  margin-left: 2px;
+}
+
 .sidebar-toggle {
   background: var(--surface2);
   border: 1px solid var(--border);
   color: var(--muted);
   cursor: pointer;
-  font-size: 0.72rem;
+  font-size: 0.78rem;
   font-weight: 600;
   letter-spacing: 0.04em;
-  padding: 4px 10px;
-  border-radius: 4px;
+  height: 26px; padding: 0 8px;
+  border-radius: 5px;
+  display: flex; align-items: center; justify-content: center; gap: 3px;
   transition: background 0.15s, color 0.15s;
 }
 .sidebar-toggle:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
 
-.app-title { font-weight: 700; font-size: 1rem; color: var(--accent); letter-spacing: 0.04em; }
+.app-title {
+  font-weight: 900; font-size: 1.2rem; letter-spacing: 0.08em;
+  color: #fff;
+}
 .ws-status { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.05em; }
 .ws-status.connected  { color: var(--green); }
 .ws-status.disconnected { color: var(--muted); }
 .refresh-countdown {
   font-size: 0.68rem; font-weight: 600; color: var(--muted);
   letter-spacing: 0.03em; white-space: nowrap;
+}
+
+/* ── Mobile header tweaks ── */
+@media (max-width: 768px) {
+  .hdr-group { gap: 3px; }
+  .hdr-btn--icon { width: 26px; height: 24px; font-size: 0.8rem; }
+  .hdr-divider { display: none; }
+  .hdr-status { border-left: none; padding-left: 0; margin-left: 0; gap: 4px; }
 }
 
 /* ── Market gate panels (pre-market / after-hours / closed) ── */

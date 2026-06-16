@@ -27,6 +27,16 @@ import AdminPanel from './components/Admin/AdminPanel'
 import { useAuth } from './components/Auth/authContext'
 import './App.css'
 
+// ── Monochrome SVG header icons ───────────────────────────────────────────────
+const sz = { width: 14, height: 14, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
+const IconInfo    = () => <svg {...sz}><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+const IconHelp    = () => <svg {...sz}><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+const IconDollar  = () => <svg {...sz}><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+const IconShield  = () => <svg {...sz}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+const IconLogout  = () => <svg {...sz}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+const IconBell    = () => <svg {...sz}><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+const IconBook    = () => <svg {...sz}><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+
 // ── Mobile ticker chip (shown in detail-view header for quick nav) ────────────
 const MobileChip: React.FC<{ ticker: string; selected: boolean; onClick: () => void }> = ({ ticker, selected, onClick }) => {
   const state = useMarketStore((s) => s.tickers[ticker])
@@ -66,6 +76,8 @@ function App() {
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [infoOpen, setInfoOpen] = useState(false)
+  const [infoMenuOpen, setInfoMenuOpen] = useState(false)
+  const infoMenuRef = useRef<HTMLDivElement>(null)
   const [costOpen, setCostOpen] = useState(false)
   const [adminOpen, setAdminOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth <= 768)
@@ -84,6 +96,17 @@ function App() {
     if (!pushSupported) return
     isPushSubscribed().then(setPushSubscribed)
   }, [pushSupported])
+
+  // Close info menu on outside click
+  useEffect(() => {
+    if (!infoMenuOpen) return
+    const handler = (e: MouseEvent) => {
+      if (infoMenuRef.current && !infoMenuRef.current.contains(e.target as Node)) setInfoMenuOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [infoMenuOpen])
+
   const [sortBy, setSortBy] = useState<'ticker' | 'price' | 'ai' | null>(null)
 
   // ── Market state ──────────────────────────────────────────────────────────
@@ -258,209 +281,139 @@ function App() {
         {isMobile && selectedTicker && (
           <button className="mobile-back-btn" onClick={() => setSelectedTicker(null)}>←</button>
         )}
-        <span className="app-title">
-          {isMobile ? 'Picker 📈' : 'Picker 📈 NYSE Dashboard'}
-        </span>
+        <span className="app-title">Picker</span>
         <div className="header-controls">
           <TimeframeSelector size={isMobile ? 'sm' : 'sm'} />
           {/* Desktop: alerts sidebar toggle */}
           {!isMobile ? (
             <>
-              <a
-                href="/landing.html"
-                target="_blank"
-                rel="noopener noreferrer"
-                title="About Picker"
-                style={{
-                  background: 'rgba(124,77,255,0.08)', border: '1px solid rgba(124,77,255,0.35)',
-                  borderRadius: 5, padding: '3px 9px', cursor: 'pointer',
-                  color: '#a78bfa', fontSize: '0.68rem', fontWeight: 700,
-                  display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, lineHeight: 1,
-                  textDecoration: 'none',
-                }}
-              >ℹ About</a>
-              <button
-                onClick={() => setInfoOpen(true)}
-                title="How to read the signals"
-                style={{
-                  background: 'rgba(251,146,60,0.08)', border: '1px solid rgba(251,146,60,0.35)',
-                  borderRadius: 5, padding: '3px 9px', cursor: 'pointer',
-                  color: '#fb923c', fontSize: '0.68rem', fontWeight: 700,
-                  display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, lineHeight: 1,
-                }}
-              >? Help</button>
-              <a
-                href="/manual.html"
-                target="_blank"
-                rel="noopener noreferrer"
-                title="User Manual"
-                style={{
-                  background: 'rgba(34,211,238,0.08)', border: '1px solid rgba(34,211,238,0.35)',
-                  borderRadius: 5, padding: '3px 9px', cursor: 'pointer',
-                  color: '#22d3ee', fontSize: '0.68rem', fontWeight: 700,
-                  display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, lineHeight: 1,
-                  textDecoration: 'none',
-                }}
-              >📖 Manual</a>
-              <button
-                onClick={() => setCostOpen(true)}
-                title="AWS cost dashboard"
-                style={{
-                  background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.35)',
-                  borderRadius: 5, padding: '3px 9px', cursor: 'pointer',
-                  color: '#22c55e', fontSize: '0.68rem', fontWeight: 700,
-                  display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, lineHeight: 1,
-                }}
-              >$ Cost</button>
-              {username === 'admin' && (
+              {/* ── Nav group: Info dropdown + Help ── */}
+              <div className="hdr-group">
+                <div ref={infoMenuRef} style={{ position: 'relative', flexShrink: 0 }}>
+                  <button
+                    className="hdr-btn hdr-btn--icon"
+                    onClick={() => setInfoMenuOpen(v => !v)}
+                    title="Info & Docs"
+                    aria-label="Info & Docs"
+                  ><IconInfo /></button>
+                  {infoMenuOpen && (
+                    <div className="hdr-dropdown">
+                      <a href="/landing.html" target="_blank" rel="noopener noreferrer"
+                        className="hdr-dropdown-item"
+                        onClick={() => setInfoMenuOpen(false)}
+                      ><IconInfo /> About</a>
+                      <a href="/manual.html" target="_blank" rel="noopener noreferrer"
+                        className="hdr-dropdown-item"
+                        onClick={() => setInfoMenuOpen(false)}
+                      ><IconBook /> Manual</a>
+                    </div>
+                  )}
+                </div>
+                <button className="hdr-btn hdr-btn--icon" onClick={() => setInfoOpen(true)} title="How to read the signals" aria-label="Help"><IconHelp /></button>
+              </div>
+
+              <span className="hdr-divider" />
+
+              {/* ── Tools group: Cost + Admin ── */}
+              <div className="hdr-group">
+                <button className="hdr-btn hdr-btn--icon" onClick={() => setCostOpen(true)} title="AWS cost dashboard" aria-label="Cost dashboard"><IconDollar /></button>
+                {username === 'admin' && (
+                  <button className="hdr-btn hdr-btn--icon" onClick={() => setAdminOpen(true)} title="Admin panel" aria-label="Admin panel"><IconShield /></button>
+                )}
+              </div>
+
+              {/* ── Session group: Logout + Alerts ── */}
+              <div className="hdr-group">
+                <button className="hdr-btn hdr-btn--icon hdr-btn--danger" onClick={logout} title={username ? `Sign out (${username})` : 'Sign out'} aria-label="Sign out"><IconLogout /></button>
                 <button
-                  onClick={() => setAdminOpen(true)}
-                  title="Admin panel"
-                  style={{
-                    background: 'rgba(129,140,248,0.08)', border: '1px solid rgba(129,140,248,0.35)',
-                    borderRadius: 5, padding: '3px 9px', cursor: 'pointer',
-                    color: '#818cf8', fontSize: '0.68rem', fontWeight: 700,
-                    display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, lineHeight: 1,
-                  }}
-                >🔐 Admin</button>
-              )}
-              <button
-                style={{
-                  background: 'rgba(239,83,80,0.08)', border: '1px solid rgba(239,83,80,0.35)',
-                  borderRadius: 5, padding: '3px 9px', cursor: 'pointer',
-                  color: '#ef5350', fontSize: '0.68rem', fontWeight: 700,
-                  display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, lineHeight: 1,
-                }}
-              >↪ Logout</button>
-              <button
-                className="sidebar-toggle"
-                onClick={() => setSidebarOpen((o) => !o)}
-                title={sidebarOpen ? 'Hide alerts' : 'Show alerts'}
-                style={{ position: 'relative' }}
-              >
-              {sidebarOpen ? '◀ Alerts' : '▶ Alerts'}
-              {!sidebarOpen && unseenAlerts > 0 && (
-                <span style={{
-                  position: 'absolute', top: -5, right: -7,
-                  background: '#ef5350', color: '#fff',
-                  fontSize: '0.58rem', fontWeight: 700,
-                  borderRadius: '50%', minWidth: 16, height: 16,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  padding: '0 3px', lineHeight: 1,
-                  boxShadow: '0 0 0 2px var(--surface)',
-                }}>
-                  {unseenAlerts > 99 ? '99+' : unseenAlerts}
-                </span>
-              )}
-              </button>
-            </>
-          ) : (
-            /* Mobile: bell icon with badge */
-            <>
-              <a
-                href="/landing.html"
-                target="_blank"
-                rel="noopener noreferrer"
-                title="About Picker"
-                aria-label="About Picker"
-                style={{
-                  background: 'rgba(124,77,255,0.08)', border: '1px solid rgba(124,77,255,0.35)',
-                  borderRadius: 5, padding: '3px 6px', cursor: 'pointer',
-                  color: '#a78bfa', fontSize: '0.85rem', fontWeight: 700,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                  textDecoration: 'none', lineHeight: 1,
-                }}
-              >ℹ</a>
-              <button
-                onClick={() => setInfoOpen(true)}
-                title="How to read the signals"
-                aria-label="Help"
-                style={{
-                  background: 'rgba(251,146,60,0.08)', border: '1px solid rgba(251,146,60,0.35)',
-                  borderRadius: 5, padding: '3px 6px', cursor: 'pointer',
-                  color: '#fb923c', fontSize: '0.85rem', fontWeight: 700,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, lineHeight: 1,
-                }}
-              >?</button>
-              <a
-                href="/manual.html"
-                target="_blank"
-                rel="noopener noreferrer"
-                title="User Manual"
-                aria-label="User Manual"
-                style={{
-                  background: 'rgba(34,211,238,0.08)', border: '1px solid rgba(34,211,238,0.35)',
-                  borderRadius: 5, padding: '3px 6px', cursor: 'pointer',
-                  color: '#22d3ee', fontSize: '0.85rem', fontWeight: 700,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                  textDecoration: 'none', lineHeight: 1,
-                }}
-              >📖</a>
-              <button
-                onClick={() => setCostOpen(true)}
-                title="AWS cost dashboard"
-                aria-label="Cost dashboard"
-                style={{
-                  background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.35)',
-                  borderRadius: 5, padding: '3px 6px', cursor: 'pointer',
-                  color: '#22c55e', fontSize: '0.85rem', fontWeight: 700,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, lineHeight: 1,
-                }}
-              >$</button>
-              {username === 'admin' && (
-                <button
-                  onClick={() => setAdminOpen(true)}
-                  title="Admin panel"
-                  aria-label="Admin panel"
-                  style={{
-                    background: 'rgba(129,140,248,0.08)', border: '1px solid rgba(129,140,248,0.35)',
-                    borderRadius: 5, padding: '3px 6px', cursor: 'pointer',
-                    color: '#818cf8', fontSize: '0.85rem', fontWeight: 700,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, lineHeight: 1,
-                  }}
-                >🔐</button>
-              )}
-              <button
-                onClick={logout}
-                title={username ? `Sign out (${username})` : 'Sign out'}
-                aria-label="Sign out"
-                style={{
-                  background: 'rgba(239,83,80,0.08)', border: '1px solid rgba(239,83,80,0.35)',
-                  borderRadius: 5, padding: '3px 6px', cursor: 'pointer',
-                  color: '#ef5350', fontSize: '0.85rem', fontWeight: 700,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, lineHeight: 1,
-                }}
-              >↪</button>
-              <button
-                className="mobile-bell-btn"
-                onClick={() => { setMobileAlertsOpen(true); setUnseenAlerts(0); seenCountRef.current = compositeAlerts.length; }}
-                aria-label="Open alerts"
-              >
-                🔔
-                {unseenAlerts > 0 && (
-                  <span className="mobile-bell-badge">
+                  className="sidebar-toggle"
+                  onClick={() => setSidebarOpen((o) => !o)}
+                  title={sidebarOpen ? 'Hide alerts' : 'Show alerts'}
+                  style={{ position: 'relative' }}
+                >
+                {sidebarOpen ? '◀' : '▶'} <IconBell />
+                {!sidebarOpen && unseenAlerts > 0 && (
+                  <span className="hdr-badge">
                     {unseenAlerts > 99 ? '99+' : unseenAlerts}
                   </span>
                 )}
-              </button>
+                </button>
+              </div>
+            </>
+          ) : (
+            /* Mobile: icon buttons with badge */
+            <>
+              {/* ── Nav group ── */}
+              <div className="hdr-group">
+                <div ref={infoMenuRef} style={{ position: 'relative', flexShrink: 0 }}>
+                  <button
+                    className="hdr-btn hdr-btn--icon"
+                    onClick={() => setInfoMenuOpen(v => !v)}
+                    title="Info & Docs"
+                    aria-label="Info & Docs"
+                  ><IconInfo /></button>
+                  {infoMenuOpen && (
+                    <div className="hdr-dropdown">
+                      <a href="/landing.html" target="_blank" rel="noopener noreferrer"
+                        className="hdr-dropdown-item"
+                        onClick={() => setInfoMenuOpen(false)}
+                      ><IconInfo /> About</a>
+                      <a href="/manual.html" target="_blank" rel="noopener noreferrer"
+                        className="hdr-dropdown-item"
+                        onClick={() => setInfoMenuOpen(false)}
+                      ><IconBook /> Manual</a>
+                    </div>
+                  )}
+                </div>
+                <button className="hdr-btn hdr-btn--icon" onClick={() => setInfoOpen(true)} title="How to read the signals" aria-label="Help"><IconHelp /></button>
+              </div>
+
+              {/* ── Tools group ── */}
+              <div className="hdr-group">
+                <button className="hdr-btn hdr-btn--icon" onClick={() => setCostOpen(true)} title="AWS cost dashboard" aria-label="Cost dashboard"><IconDollar /></button>
+                {username === 'admin' && (
+                  <button className="hdr-btn hdr-btn--icon" onClick={() => setAdminOpen(true)} title="Admin panel" aria-label="Admin panel"><IconShield /></button>
+                )}
+              </div>
+
+              {/* ── Session group ── */}
+              <div className="hdr-group">
+                <button className="hdr-btn hdr-btn--icon hdr-btn--danger" onClick={logout} title={username ? `Sign out (${username})` : 'Sign out'} aria-label="Sign out"><IconLogout /></button>
+                <button
+                  className="mobile-bell-btn"
+                  onClick={() => { setMobileAlertsOpen(true); setUnseenAlerts(0); seenCountRef.current = compositeAlerts.length; }}
+                  aria-label="Open alerts"
+                >
+                  <IconBell />
+                  {unseenAlerts > 0 && (
+                    <span className="mobile-bell-badge">
+                      {unseenAlerts > 99 ? '99+' : unseenAlerts}
+                    </span>
+                  )}
+                </button>
+              </div>
             </>
           )}
-          <span className={`ws-status ${connected ? 'connected' : 'disconnected'}`}>
-            {isMobile ? (connected ? '●' : '○') : (connected ? '● LIVE' : '○ CONNECTING…')}
-          </span>
-          {wsEnabled && refreshCountdown ? (
-            <span className="refresh-countdown" title="Next data refresh">
-              ⟳ {refreshCountdown}
+
+          {/* ── Status cluster ── */}
+          <div className="hdr-status">
+            <span className={`ws-status ${connected ? 'connected' : 'disconnected'}`}>
+              {isMobile ? (connected ? '●' : '○') : (connected ? '● LIVE' : '○ CONNECTING…')}
             </span>
-          ) : (
-            <span className="refresh-countdown" title={`Market ${marketState.toLowerCase().replace('_', '-')}`}>
-              {marketState === 'CLOSED' ? '⏸ CLOSED'
-                : marketState === 'HOLIDAY' ? '⏸ HOLIDAY'
-                : marketState === 'PRE_MARKET' ? `⏰ ${openCountdown || 'PRE'}`
-                : marketState === 'AFTER_HOURS' ? '🌙 AFTER-HRS'
-                : '⟳ —'}
-            </span>
-          )}
+            {wsEnabled && refreshCountdown ? (
+              <span className="refresh-countdown" title="Next data refresh">
+                ⟳ {refreshCountdown}
+              </span>
+            ) : (
+              <span className="refresh-countdown" title={`Market ${marketState.toLowerCase().replace('_', '-')}`}>
+                {marketState === 'CLOSED' ? '⏸ CLOSED'
+                  : marketState === 'HOLIDAY' ? '⏸ HOLIDAY'
+                  : marketState === 'PRE_MARKET' ? `⏰ ${openCountdown || 'PRE'}`
+                  : marketState === 'AFTER_HOURS' ? '🌙 AFTER-HRS'
+                  : '⟳ —'}
+              </span>
+            )}
+          </div>
         </div>
       </header>
 

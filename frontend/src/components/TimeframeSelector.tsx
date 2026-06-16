@@ -16,7 +16,6 @@ const TimeframeSelector: React.FC<Props> = ({ size = 'sm', title = 'Active timef
   const tf = useMarketStore((s) => s.selectedTimeframe);
   const setTf = useMarketStore((s) => s.setSelectedTimeframe);
 
-  const pad = size === 'sm' ? '3px 9px' : '5px 12px';
   const fontSize = size === 'sm' ? '0.68rem' : '0.78rem';
 
   return (
@@ -30,6 +29,7 @@ const TimeframeSelector: React.FC<Props> = ({ size = 'sm', title = 'Active timef
         borderRadius: 5,
         overflow: 'hidden',
         flexShrink: 0,
+        height: 26,
       }}
     >
       {TIMEFRAMES.map((opt: Timeframe, idx) => {
@@ -40,15 +40,16 @@ const TimeframeSelector: React.FC<Props> = ({ size = 'sm', title = 'Active timef
             onClick={() => { if (!active) setTf(opt); }}
             aria-pressed={active}
             style={{
-              padding: pad,
+              padding: '0 9px',
               fontSize,
               fontWeight: 700,
               lineHeight: 1,
               cursor: active ? 'default' : 'pointer',
               background: active ? 'var(--accent)' : 'transparent',
-              color: active ? '#fff' : 'var(--text)',
+              color: active ? '#fff' : 'var(--muted)',
               border: 'none',
               borderRight: idx < TIMEFRAMES.length - 1 ? '1px solid var(--border)' : 'none',
+              transition: 'background 0.15s, color 0.15s',
             }}
           >
             {opt}

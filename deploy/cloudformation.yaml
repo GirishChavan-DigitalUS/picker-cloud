@@ -194,8 +194,7 @@ Resources:
               - Sid: BudgetsRead
                 Effect: Allow
                 Action:
-                  - budgets:DescribeBudgets
-                  - budgets:DescribeNotificationsForBudget
+                  - budgets:ViewBudget
                 Resource: '*'
               - Sid: StsIdentity
                 Effect: Allow

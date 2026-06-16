@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Picker — User Manual</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0d0f14;
+      --surface:  #141720;
+      --surface2: #1b1f2e;
+      --border:   #252a3a;
+      --text:     #e2e8f0;
+      --muted:    #6b7280;
+      --accent:   #7c4dff;
+      --accent2:  #a78bfa;
+      --green:    #26a69a;
+      --red:      #ef5350;
+      --orange:   #ff9800;
+      --gold:     #ffc107;
+      --cyan:     #22d3ee;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      line-height: 1.7;
+      overflow-x: hidden;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(13,15,20,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 40px; height: 56px;
+    }
+    .nav-brand { font-size: 1.1rem; font-weight: 800; letter-spacing: -0.02em; text-decoration: none; color: var(--text); }
+    .nav-brand span { color: var(--accent2); }
+    .nav-links { display: flex; gap: 24px; align-items: center; }
+    .nav-links a { color: var(--muted); text-decoration: none; font-size: 0.82rem; font-weight: 500; transition: color .2s; }
+    .nav-links a:hover { color: var(--text); }
+    .nav-cta {
+      background: var(--accent); color: #fff; border: none;
+      padding: 7px 18px; border-radius: 6px; font-weight: 700;
+      font-size: 0.82rem; cursor: pointer; text-decoration: none;
+      transition: background .2s;
+    }
+    .nav-cta:hover { background: #6b3fe0; }
+
+    /* ── TOC ── */
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 28px 32px;
+      margin: 32px auto;
+      max-width: 820px;
+    }
+    .toc h2 { font-size: 1rem; color: var(--accent2); margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.08em; }
+    .toc ol { padding-left: 20px; }
+    .toc li { margin-bottom: 6px; }
+    .toc a { color: var(--cyan); text-decoration: none; font-size: 0.88rem; }
+    .toc a:hover { text-decoration: underline; }
+
+    /* ── CONTENT ── */
+    .manual { max-width: 860px; margin: 0 auto; padding: 0 24px 80px; }
+
+    .manual h1 {
+      font-size: 2rem; font-weight: 800; margin: 48px 0 8px;
+      background: linear-gradient(135deg, var(--accent2), var(--cyan));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      letter-spacing: -0.02em;
+    }
+    .manual .subtitle { color: var(--muted); font-size: 0.92rem; margin-bottom: 32px; }
+
+    .manual h2 {
+      font-size: 1.35rem; font-weight: 700; margin: 48px 0 12px;
+      padding-bottom: 8px; border-bottom: 1px solid var(--border);
+      color: var(--accent2);
+    }
+    .manual h3 { font-size: 1.05rem; font-weight: 700; margin: 28px 0 8px; color: var(--text); }
+    .manual h4 { font-size: 0.92rem; font-weight: 700; margin: 20px 0 6px; color: var(--cyan); }
+
+    .manual p { margin-bottom: 14px; font-size: 0.9rem; color: #cbd5e1; }
+    .manual ul, .manual ol { padding-left: 22px; margin-bottom: 14px; }
+    .manual li { margin-bottom: 6px; font-size: 0.88rem; color: #cbd5e1; }
+    .manual strong { color: var(--text); }
+    .manual code {
+      background: var(--surface2); padding: 2px 6px; border-radius: 4px;
+      font-size: 0.82rem; color: var(--accent2); font-family: 'Fira Code', 'Consolas', monospace;
+    }
+    .manual a { color: var(--cyan); text-decoration: none; }
+    .manual a:hover { text-decoration: underline; }
+
+    /* Callout boxes */
+    .callout {
+      border-radius: 8px; padding: 14px 18px; margin: 16px 0;
+      font-size: 0.85rem; border-left: 3px solid;
+    }
+    .callout-tip { background: rgba(38,166,154,0.08); border-color: var(--green); }
+    .callout-warn { background: rgba(255,152,0,0.08); border-color: var(--orange); }
+    .callout-info { background: rgba(124,77,255,0.08); border-color: var(--accent); }
+
+    /* Table */
+    table {
+      width: 100%; border-collapse: collapse; margin: 16px 0;
+      font-size: 0.85rem;
+    }
+    th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border); }
+    th { background: var(--surface); color: var(--accent2); font-weight: 700; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; }
+    td { color: #cbd5e1; }
+    tr:hover td { background: rgba(124,77,255,0.04); }
+
+    /* Color chips */
+    .chip { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; margin: 0 2px; }
+    .chip-green  { background: rgba(38,166,154,0.15); color: var(--green); border: 1px solid rgba(38,166,154,0.3); }
+    .chip-red    { background: rgba(239,83,80,0.15); color: var(--red); border: 1px solid rgba(239,83,80,0.3); }
+    .chip-yellow { background: rgba(255,193,7,0.15); color: var(--gold); border: 1px solid rgba(255,193,7,0.3); }
+    .chip-grey   { background: rgba(107,114,128,0.15); color: var(--muted); border: 1px solid rgba(107,114,128,0.3); }
+    .chip-orange { background: rgba(255,152,0,0.15); color: var(--orange); border: 1px solid rgba(255,152,0,0.3); }
+    .chip-cyan   { background: rgba(34,211,238,0.15); color: var(--cyan); border: 1px solid rgba(34,211,238,0.3); }
+    .chip-purple { background: rgba(124,77,255,0.15); color: var(--accent2); border: 1px solid rgba(124,77,255,0.3); }
+
+    /* Badge grid */
+    .badge-grid { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+    .badge-grid .chip { font-size: 0.78rem; padding: 4px 10px; }
+
+    /* Back to top */
+    .back-top {
+      position: fixed; bottom: 24px; right: 24px;
+      background: var(--accent); color: #fff; border: none;
+      width: 40px; height: 40px; border-radius: 50%;
+      font-size: 1.1rem; cursor: pointer; display: flex;
+      align-items: center; justify-content: center;
+      box-shadow: 0 4px 16px rgba(124,77,255,0.3);
+      transition: transform .2s;
+    }
+    .back-top:hover { transform: scale(1.1); }
+
+    /* Footer */
+    footer {
+      text-align: center; padding: 32px 24px;
+      border-top: 1px solid var(--border);
+      color: var(--muted); font-size: 0.78rem;
+    }
+
+    @media (max-width: 768px) {
+      nav { padding: 0 16px; }
+      .toc { margin: 16px; padding: 20px; }
+      .manual { padding: 0 16px 60px; }
+      .manual h1 { font-size: 1.5rem; }
+      .manual h2 { font-size: 1.15rem; }
+      table { font-size: 0.78rem; }
+      th, td { padding: 8px 10px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Navigation ── -->
+<nav>
+  <a href="/landing.html" class="nav-brand"><span>Picker</span> Manual</a>
+  <div class="nav-links">
+    <a href="#indicators">Indicators</a>
+    <a href="#ai-system">AI System</a>
+    <a href="#signals">Signals</a>
+    <a href="#patterns">Patterns</a>
+    <a href="/app" class="nav-cta">Open Dashboard →</a>
+  </div>
+</nav>
+
+<!-- ── Hero ── -->
+<div class="manual">
+  <h1>Picker User Manual</h1>
+  <p class="subtitle">
+    Complete guide to the NYSE intraday trading dashboard — indicators, AI predictions,
+    signal strategies, pattern recognition, alerts, and everything you need to read the market.
+  </p>
+
+  <!-- ── Table of Contents ── -->
+  <div class="toc" id="top">
+    <h2>Table of Contents</h2>
+    <ol>
+      <li><a href="#overview">Overview &amp; Getting Started</a></li>
+      <li><a href="#navigation">Navigation &amp; Layout</a></li>
+      <li><a href="#dashboard">Dashboard Features</a></li>
+      <li><a href="#indicators">Indicators Reference</a></li>
+      <li><a href="#ai-system">AI Prediction System</a></li>
+      <li><a href="#signals">Signals &amp; Alert Types</a></li>
+      <li><a href="#composite">Composite Alerts (High-Conviction Setups)</a></li>
+      <li><a href="#patterns">Pattern Engine &amp; Traffic Lights</a></li>
+      <li><a href="#detail">Detail View &amp; Analysis Panels</a></li>
+      <li><a href="#confluence">Confluence Analysis</a></li>
+      <li><a href="#tape-read">Tape Read &amp; Senior Trader Narrative</a></li>
+      <li><a href="#chart">Chart Controls</a></li>
+      <li><a href="#alerts-panel">Alerts Panel</a></li>
+      <li><a href="#mobile">Mobile &amp; PWA Support</a></li>
+      <li><a href="#push">Push Notifications</a></li>
+      <li><a href="#market-hours">Market Hours &amp; Off-Hours Mode</a></li>
+      <li><a href="#costs">AWS Cost Dashboard</a></li>
+      <li><a href="#admin">Admin Panel</a></li>
+      <li><a href="#glossary">Glossary</a></li>
+    </ol>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- 1. OVERVIEW -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <h2 id="overview">1. Overview &amp; Getting Started</h2>
+
+  <p>
+    <strong>Picker</strong> is an AI-powered intraday trading dashboard for NYSE equities. It combines
+    real-time technical indicators, rule-based signal detection, optional machine learning, and
+    multi-timeframe confluence analysis to identify high-probability setups during market hours.
+  </p>
+
+  <h3>Default Ticker Universe</h3>
+  <div class="badge-grid">
+    <span class="chip chip-purple">SPY</span>
+    <span class="chip chip-purple">QQQ</span>
+    <span class="chip chip-purple">SPX</span>
+    <span class="chip chip-purple">AAPL</span>
+    <span class="chip chip-purple">GOOGL</span>
+    <span class="chip chip-purple">NVDA</span>
+    <span class="chip chip-purple">TSLA</span>
+    <span class="chip chip-purple">AMZN</span>
+    <span class="chip chip-purple">MSFT</span>
+    <span class="chip chip-purple">PLTR</span>
+    <span class="chip chip-purple">META</span>
+    <span class="chip chip-purple">AMD</span>
+  </div>
+  <p>You can add or remove tickers on-the-fly from the dashboard.</p>
+
+  <h3>Market Sessions (US Eastern)</h3>
+  <table>
+    <tr><th>Session</th><th>Hours (ET)</th><th>Dashboard Behavior</th></tr>
+    <tr><td><strong>Pre-Market</strong></td><td>04:00 – 09:30</td><td>Historical view, countdown to open</td></tr>
+    <tr><td><strong>Regular (RTH)</strong></td><td>09:30 – 16:00</td><td>Full live dashboard, real-time signals</td></tr>
+    <tr><td><strong>After-Hours</strong></td><td>16:00 – 20:00</td><td>Historical view, last session data</td></tr>
+    <tr><td><strong>Closed</strong></td><td>Weekends &amp; holidays</td><td>Off-hours gate with countdown</td></tr>
+  </table>
+
+  <h3>Timeframes</h3>
+  <p>
+    Picker runs two intraday timeframes. Use the <strong>Timeframe Selector</strong> in the header to switch:
+  </p>
+  <ul>
+    <li><strong>2m (Primary)</strong> — Updates every 2 minutes. Captures fast momentum shifts and scalping setups.</li>
+    <li><strong>5m (Secondary)</strong> — Updates every 5 minutes. Better for swing entries and smoother signals.</li>
+  </ul>
+
+  <div class="callout callout-tip">
+    <strong>Tip:</strong> Start with <strong>2m</strong> for active trading. Switch to <strong>5m</strong> when you want fewer, more deliberate signals with less noise.
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- 2. NAVIGATION -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <h2 id="navigation">2. Navigation &amp; Layout</h2>
+
+  <h3>Header Controls</h3>
+  <table>
+    <tr><th>Button</th><th>Action</th></tr>
+    <tr><td><span class="chip chip-purple">2m / 5m</span></td><td>Switch active timeframe</td></tr>
+    <tr><td><span class="chip chip-purple">ℹ About</span></td><td>Opens the project landing page</td></tr>
+    <tr><td><span class="chip chip-orange">? Help</span></td><td>Opens the in-app Signal Guide modal</td></tr>
+    <tr><td><span class="chip chip-cyan">📖 Manual</span></td><td>Opens this user manual (new tab)</td></tr>
+    <tr><td><span class="chip chip-green">$ Costs</span></td><td>AWS cost dashboard modal</td></tr>
+    <tr><td><span class="chip chip-red">Admin</span></td><td>Session management (admin only)</td></tr>
+    <tr><td>Logout</td><td>End your session</td></tr>
+  </table>
+
+  <h3>Desktop Layout</h3>
+  <p>
+    <strong>Left panel:</strong> Ticker grid with insight cards, sorted by ticker / price / AI confidence.<br>
+    <strong>Right panel:</strong> Detail view for selected ticker (chart, indicators, AI analysis).<br>
+    <strong>Far right:</strong> Alerts sidebar (collapsible).
+  </p>
+
+  <h3>Mobile Layout</h3>
+  <p>
+    Single-column flow. Tap a ticker card to open full-screen detail view.
+    Bell icon in the header opens the alerts panel as a modal overlay.
+  </p>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- 3. DASHBOARD -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <h2 id="dashboard">3. Dashboard Features</h2>
+
+  <h3>Macro Index Banner</h3>
+  <p>
+    The banner at the top shows the macro alignment across <strong>SPY</strong>, <strong>QQQ</strong>,
+    and <strong>SPX</strong>. Each index displays its daily trend direction. The combined reading tells
+    you the broad market posture:
+  </p>
+  <table>
+    <tr><th>Label</th><th>Meaning</th><th>Implication</th></tr>
+    <tr><td><span class="chip chip-green">↑ Macro Tailwind</span></td><td>All indices bullish</td><td>Long setups have wind at their back</td></tr>
+    <tr><td><span class="chip chip-red">↓ Macro Headwind</span></td><td>All indices bearish</td><td>Short setups favored; longs fight the tape</td></tr>
+    <tr><td><span class="chip chip-green">↗ Lean Bullish</span></td><td>Majority bullish</td><td>Mild bullish bias</td></tr>
+    <tr><td><span class="chip chip-red">↘ Lean Bearish</span></td><td>Majority bearish</td><td>Mild bearish bias</td></tr>
+    <tr><td><span class="chip chip-yellow">⚠ Index Conflict</span></td><td>Mixed signals</td><td>Exercise caution; wait for alignment</td></tr>
+  </table>
+
+  <div class="callout callout-tip">
+    <strong>Strategy:</strong> The highest-probability setups occur when your ticker's signal aligns with the macro banner direction.
+  </div>
+
+  <h3>Ticker Insight Cards</h3>
+  <p>Each card in the grid shows:</p>
+  <ul>
+    <li><strong>Ticker &amp; price</strong> — Color-coded by EMA state (green = bullish, red = bearish)</li>
+    <li><strong>Price change %</strong> — Intraday performance</li>
+    <li><strong>Signal history strip</strong> — Last 10 bars as colored chips (see <a href="#patterns">Pattern Engine</a>)</li>
+    <li><strong>Traffic light</strong> — Single-bar pattern summary</li>
+    <li><strong>Pattern label</strong> — e.g., BREAKOUT, FAKE, REJCT, REV↑, CONT.</li>
+    <li><strong>Confidence bar</strong> — Visual fill showing current AI confidence (0–100%)</li>
+    <li><strong>VWAP badge</strong> — Shows <span class="chip chip-green">VWAP BUY</span> or <span class="chip chip-red">VWAP SELL</span> on recent crosses</li>
+    <li><strong>Confluence badge</strong> — Shows <span class="chip chip-green">BUY</span>, <span class="chip chip-red">SELL</span>, or <span class="chip chip-grey">MIXED</span> confluence bias</li>
+  </ul>
+
+  <h3>Sorting</h3>
+  <ul>
+    <li><strong>Ticker</strong> — Alphabetical A–Z</li>
+    <li><strong>Price</strong> — Highest to lowest</li>
+    <li><strong>AI</strong> — Highest confidence first (regardless of direction)</li>
+  </ul>
+
+  <h3>Add / Remove Tickers</h3>
+  <p>
+    Click <strong>+ Add Ticker</strong> at the bottom of the grid. Enter any NYSE symbol (e.g., "UBER").
+    To remove, hover a card and click the <strong>✕</strong> button (mobile: tap and confirm).
+  </p>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- 4. INDICATORS -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <h2 id="indicators">4. Indicators Reference</h2>
+
+  <h3>EMA — Exponential Moving Averages</h3>
+  <p>Periods: <strong>9</strong>, <strong>21</strong>, <strong>50</strong> (TradingView formula). Displayed as blue (EMA9) and orange (EMA21) lines on the chart.</p>
+  <table>
+    <tr><th>Condition</th><th>State</th><th>Meaning</th></tr>
+    <tr><td>EMA9 &gt; EMA21</td><td><span class="chip chip-green">BULLISH</span></td><td>Short-term momentum is above medium-term</td></tr>
+    <tr><td>EMA9 &lt; EMA21</td><td><span class="chip chip-red">BEARISH</span></td><td>Short-term momentum has rolled over</td></tr>
+    <tr><td>9 &gt; 21 &gt; 50</td><td><span class="chip chip-green">FULL STACK ↑</span></td><td>Strong bullish alignment across all periods</td></tr>
+    <tr><td>9 &lt; 21 &lt; 50</td><td><span class="chip chip-red">FULL STACK ↓</span></td><td>Strong bearish alignment across all periods</td></tr>
+  </table>
+  <p><strong>EMA Spread %</strong> = (EMA9 – EMA21) / EMA21 × 100. Positive = bullish separation; negative = bearish compression.</p>
+
+  <h3>RSI-14 — Relative Strength Index</h3>
+  <p>14-period RSI using Wilder's smoothing method.</p>
+  <table>
+    <tr><th>Zone</th><th>Reading</th><th>Interpretation</th></tr>
+    <tr><td><span class="chip chip-red">Overbought</span></td><td>&gt; 70</td><td>Stretched upside; mean reversion risk. Suppresses bullish signals.</td></tr>
+    <tr><td>Neutral</td><td>30 – 70</td><td>Normal range; no directional bias from RSI alone.</td></tr>
+    <tr><td><span class="chip chip-green">Oversold</span></td><td>&lt; 30</td><td>Stretched downside; bounce potential. Suppresses bearish signals.</td></tr>
+  </table>
+
+  <h3>VWAP — Volume-Weighted Average Price</h3>
+  <p>
+    VWAP = Σ(Typical Price × Volume) / Σ(Volume), where Typical Price = (High + Low + Close) / 3.
+    Resets at each session boundary. Displayed as a cyan/teal line on the chart.
+  </p>
+  <table>
+    <tr><th>Condition</th><th>Signal</th><th>Meaning</th></tr>
+    <tr><td>Price &gt; VWAP</td><td><span class="chip chip-green">ABOVE</span></td><td>Trading above institutional fair value — buyers control</td></tr>
+    <tr><td>Price &lt; VWAP</td><td><span class="chip chip-red">BELOW</span></td><td>Trading below fair value — sellers control</td></tr>
+    <tr><td>Moving AWAY from VWAP</td><td>Trend confirmation</td><td>Strong momentum pushing price further from fair value</td></tr>
+    <tr><td>Converging TO VWAP</td><td>Mean reversion</td><td>Price returning to equilibrium; setup may be exhausting</td></tr>
+  </table>
+
+  <div class="callout callout-info">
+    <strong>Key insight:</strong> The most powerful bullish signal is <strong>Price above VWAP AND moving AWAY</strong> — this means
+    both position and momentum confirm the move. The AI weights this heavily (1.3× in rule scoring).
+  </div>
+
+  <h3>Volume Profile &amp; POC</h3>
+  <p>
+    <strong>POC (Point of Control)</strong> is the price level with the highest cumulative volume in the current session,
+    calculated from a 50-bin histogram.
+  </p>
+  <ul>
+    <li><strong>Price &gt; POC</strong> — Buyers established control above the session's fair-value zone</li>
+    <li><strong>Price &lt; POC</strong> — Sellers dominate below the session's heaviest volume node</li>
+    <li><strong>VAL (Value Area Low)</strong> — Lower bound of the 70% volume cluster</li>
+    <li><strong>VAH (Value Area High)</strong> — Upper bound of the 70% volume cluster</li>
+  </ul>
+
+  <h3>Support &amp; Resistance</h3>
+  <p>Multi-timeframe levels derived from:</p>
+  <ul>
+    <li><strong>5-min swing highs/lows</strong> — 3-bar pivot window for 2m TF, 2-bar for 5m TF</li>
+    <li><strong>1-hour pivot highs/lows</strong> — Resampled from 5-min data</li>
+    <li><strong>Daily pivot highs/lows</strong> — Multi-day resampled</li>
+  </ul>
+  <p>Levels within 0.2% of each other are merged. Each level has a <strong>strength score</strong> based on how many timeframes confirm it and how many times price has tested it.</p>
+
+  <h3>Session Levels</h3>
+  <table>
+    <tr><th>Level</th><th>Definition</th><th>Significance</th></tr>
+    <tr><td><strong>ORB High / Low</strong></td><td>First 15 minutes (09:30–09:44 ET)</td><td>Opening Range Breakout levels — a break above/below often sets the day's direction</td></tr>
+    <tr><td><strong>Premarket High / Low</strong></td><td>04:00–09:30 ET range</td><td>Key overnight reference; breaks indicate strong directional conviction</td></tr>
+    <tr><td><strong>Previous Day High / Low</strong></td><td>Yesterday's RTH extremes</td><td>Major support/resistance for the current session</td></tr>
+    <tr><td><strong>Session POC</strong></td><td>POC per session (pre/regular/after)</td><td>Fair-value anchor for that time window</td></tr>
+  </table>
+
+  <h3>Daily Trend</h3>
+  <p>Derived from resampling 5-min bars to daily candles. Checks the last 3 daily bars:</p>
+  <ul>
+    <li><span class="chip chip-green">BULL</span> — Higher highs AND higher lows across 3 days</li>
+    <li><span class="chip chip-red">BEAR</span> — Lower highs AND lower lows across 3 days</li>
+    <li><span class="chip chip-grey">NEUTRAL</span> — No consistent pattern</li>
+  </ul>
+
+  <h3>Candle Context (Structure Analysis)</h3>
+  <p>The candle context engine analyzes the last 30 minutes of price action for structure and patterns:</p>
+
+  <h4>Structure Types</h4>
+  <table>
+    <tr><th>Structure</th><th>Definition</th><th>Action</th></tr>
+    <tr><td><span class="chip chip-green">↑ UPTREND</span></td><td>Higher highs + higher lows on multiple bars</td><td>Look for pullback entries long</td></tr>
+    <tr><td><span class="chip chip-red">↓ DOWNTREND</span></td><td>Lower highs + lower lows on multiple bars</td><td>Look for rally failures to short</td></tr>
+    <tr><td><span class="chip chip-yellow">◆ COILING</span></td><td>Narrowing range, indecision building</td><td>Prepare for breakout; direction TBD</td></tr>
+    <tr><td><span class="chip chip-grey">─ CHOPPY</span></td><td>No clear direction, noise-heavy</td><td>Stay flat or reduce size</td></tr>
+  </table>
+
+  <h4>Candlestick Patterns Detected</h4>
+  <table>
+    <tr><th>Pattern</th><th>Bias</th><th>Description</th></tr>
+    <tr><td>Bullish Engulfing</td><td><span class="chip chip-green">Bullish</span></td><td>Red candle followed by larger green candle — bullish reversal</td></tr>
+    <tr><td>Bearish Engulfing</td><td><span class="chip chip-red">Bearish</span></td><td>Green candle followed by larger red candle — bearish reversal</td></tr>
+    <tr><td>Hammer</td><td><span class="chip chip-green">Bullish</span></td><td>Long lower wick, small body — buyers absorbing selling pressure</td></tr>
+    <tr><td>Shooting Star</td><td><span class="chip chip-red">Bearish</span></td><td>Long upper wick, small body — sellers rejecting rally attempt</td></tr>
+    <tr><td>Doji</td><td><span class="chip chip-yellow">Neutral</span></td><td>Body ≤ 10% of range — indecision, potential reversal</td></tr>
+    <tr><td>Inside Bar</td><td><span class="chip chip-yellow">Neutral</span></td><td>Current bar fits inside prior bar — consolidation before expansion</td></tr>
+    <tr><td>NR7</td><td><span class="chip chip-yellow">Neutral</span></td><td>Narrowest range of last 7 bars — squeeze building energy</td></tr>
+    <tr><td>Three Green / Three Red</td><td><span class="chip chip-green">Trend</span></td><td>3+ consecutive bars same direction — momentum confirmation</td></tr>
+    <tr><td>Upper Rejection Wick</td><td><span class="chip chip-red">Bearish</span></td><td>Red candle with upper wick ≥ 1.5× body — failed rally</td></tr>
+    <tr><td>Lower Rejection Wick</td><td><span class="chip chip-green">Bullish</span></td><td>Green candle with lower wick ≥ 1.5× body — failed selloff</td></tr>
+  </table>
+
+  <h4>Volume Character</h4>
+  <table>
+    <tr><th>Type</th><th>Meaning</th></tr>
+    <tr><td><span class="chip chip-green">INSTITUTIONAL</span></td><td>High volume + directional move — smart money is participating</td></tr>
+    <tr><td><span class="chip chip-orange">CLIMAX</span></td><td>Extreme volume spike — often precedes a reversal or exhaustion</td></tr>
+    <tr><td><span class="chip chip-grey">THIN</span></td><td>Below-average volume — low conviction, trend may stall</td></tr>
+    <tr><td>NORMAL</td><td>Average volume — no special signal from volume alone</td></tr>
+  </table>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- 5. AI SYSTEM -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <h2 id="ai-system">5. AI Prediction System</h2>
+
+  <h3>Pipeline Architecture</h3>
+  <p>Each prediction flows through a multi-stage pipeline:</p>
+  <ol>
+    <li><strong>Evidence Builder</strong> — Computes 30+ features from indicators and candles (timeframe-aware)</li>
+    <li><strong>Rule Engine</strong> — 40+ deterministic rules, each with a weight and direction. Rules fire based on indicator states and candle patterns.</li>
+    <li><strong>ML Blend</strong> (optional) — If a Gradient Boosting model is trained on ≥ 500 samples for this timeframe, it provides a secondary opinion.</li>
+    <li><strong>Output</strong> — Final prediction: <span class="chip chip-green">UP</span>, <span class="chip chip-red">DOWN</span>, <span class="chip chip-grey">NEUTRAL</span>, or <span class="chip chip-yellow">ABSTAIN</span> + confidence (0–1)</li>
+  </ol>
+
+  <h3>Confidence Scoring</h3>
+  <p>
+    Confidence = <code>(bullish_weight_sum – bearish_weight_sum) / total_weight_sum</code>, clamped to 0–1.
+    If confidence falls below <strong>0.40</strong>, the prediction becomes <strong>ABSTAIN</strong> — meaning the model
+    doesn't have enough conviction to call a direction.
+  </p>
+
+  <h3>Key Rules (High-Weight Examples)</h3>
+  <table>
+    <tr><th>Rule</th><th>Weight</th><th>Direction</th><th>Trigger</th></tr>
+    <tr><td>confluence_strong_bull</td><td>1.8</td><td><span class="chip chip-green">UP</span></td><td>6+ indicators aligned bullish</td></tr>
+    <tr><td>orb_break_bullish</td><td>1.4</td><td><span class="chip chip-green">UP</span></td><td>Price breaks ORB High on volume</td></tr>
+    <tr><td>vwap_bull_momentum</td><td>1.3</td><td><span class="chip chip-green">UP</span></td><td>Above VWAP + moving AWAY</td></tr>
+    <tr><td>vwap_reclaim_bullish</td><td>1.3</td><td><span class="chip chip-green">UP</span></td><td>Price crosses above VWAP this bar</td></tr>
+    <tr><td>ema_stack_bullish</td><td>1.2</td><td><span class="chip chip-green">UP</span></td><td>Full bullish stack (9 &gt; 21 &gt; 50)</td></tr>
+    <tr><td>daily_trend_bull</td><td>1.2</td><td><span class="chip chip-green">UP</span></td><td>Daily trend is BULL</td></tr>
+    <tr><td>sr_support_bounce</td><td>1.2</td><td><span class="chip chip-green">UP</span></td><td>Near support, moving up, normal volume</td></tr>
+    <tr><td>higher_low_formed</td><td>1.1</td><td><span class="chip chip-green">UP</span></td><td>HH + HL confirmed on swing structure</td></tr>
+    <tr><td>ema_bullish</td><td>1.0</td><td><span class="chip chip-green">UP</span></td><td>EMA9 &gt; EMA21</td></tr>
+    <tr><td>price_above_poc</td><td>1.0</td><td><span class="chip chip-green">UP</span></td><td>Price above Point of Control</td></tr>
+  </table>
+  <p><em>Bearish rules are the inverse of each bullish rule with equal weights.</em></p>
+
+  <h3>Suppression Rules</h3>
+  <p>These reduce confidence or prevent signals when conditions are ambiguous:</p>
+  <table>
+    <tr><th>Rule</th><th>Effect</th><th>Trigger</th></tr>
+    <tr><td>ema_cross_imminent</td><td>×0.7 confidence</td><td>EMA9 &amp; EMA21 gap &lt; 0.08% — cross about to flip</td></tr>
+    <tr><td>rsi_overbought</td><td>Suppresses bullish</td><td>RSI &gt; 70 — upside stretched</td></tr>
+    <tr><td>rsi_oversold</td><td>Suppresses bearish</td><td>RSI &lt; 30 — downside stretched</td></tr>
+    <tr><td>volume_dry_up</td><td>×0.6 confidence</td><td>Volume &lt; 0.5× average — no conviction</td></tr>
+  </table>
+
+  <h3>ML Blend Logic</h3>
+  <p>When the ML model is active for a timeframe:</p>
+  <ul>
+    <li><strong>Agreement</strong> (rule &amp; ML same direction): Confidence = 0.7 × rule + 0.3 × ML → boosted</li>
+    <li><strong>ML Override</strong> (rule abstained, ML ≥ 0.40): ML prediction used, tagged <code>ml_override</code></li>
+    <li><strong>Disagreement</strong>: Rule engine result takes precedence</li>
+  </ul>
+
+  <h3>Outcome Tracking</h3>
+  <p>
+    Every prediction is tracked. After the prediction horizon (10 min for 2m TF, 30 min for 5m TF),
+    the system checks whether price moved in the predicted direction by ≥ 0.1%. Outcomes feed back
+    into ML retraining for continuous improvement.
+  </p>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- 6. SIGNALS -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <h2 id="signals">6. Signals &amp; Alert Types</h2>
+
+  <h3>Individual Signal Types</h3>
+  <table>
+    <tr><th>Signal</th><th>Type</th><th>Trigger</th><th>Direction</th></tr>
+    <tr>
+      <td><strong>EMA Crossover</strong></td>
+      <td><code>ema_cross</code></td>
+      <td>EMA9 crosses above or below EMA21</td>
+      <td><span class="chip chip-green">UP</span> (bullish cross) / <span class="chip chip-red">DOWN</span> (bearish cross)</td>
+    </tr>
+    <tr>
+      <td><strong>VWAP Reclaim</strong></td>
+      <td><code>vwap_reclaim</code></td>
+      <td>Price crosses above VWAP</td>
+      <td><span class="chip chip-green">UP</span></td>
+    </tr>
+    <tr>
+      <td><strong>VWAP Breakdown</strong></td>
+      <td><code>vwap_breakdown</code></td>
+      <td>Price crosses below VWAP</td>
+      <td><span class="chip chip-red">DOWN</span></td>
+    </tr>
+    <tr>
+      <td><strong>S/R Break</strong></td>
+      <td><code>sr_break</code></td>
+      <td>Price breaks a key support or resistance level by &gt; 0.1%</td>
+      <td><span class="chip chip-green">UP</span> (resistance break) / <span class="chip chip-red">DOWN</span> (support break)</td>
+    </tr>
+  </table>
+  <p>Individual signals are deduplicated — each fires at most once per 5 minutes for the same ticker.</p>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- 7. COMPOSITE ALERTS -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <h2 id="composite">7. Composite Alerts (High-Conviction Setups)</h2>
+
+  <p>
+    Composite alerts fire when <strong>3+ indicators align</strong> with sufficient AI confidence.
+    They are ranked by tier:
+  </p>
+
+  <h3>Tier 1 — ACT (Confidence ≥ 0.75)</h3>
+  <p>These are the highest-conviction setups. Consider taking immediate action.</p>
+  <table>
+    <tr><th>Alert</th><th>Setup</th></tr>
+    <tr><td><span class="chip chip-green">POWER_TREND_BULL</span></td><td>Daily BULL + EMA bullish + Price above VWAP + VWAP moving AWAY. Full macro + micro alignment.</td></tr>
+    <tr><td><span class="chip chip-red">POWER_TREND_BEAR</span></td><td>Inverse of Power Trend Bull. All indicators bearish + macro headwind.</td></tr>
+    <tr><td><span class="chip chip-green">STRUCTURE_BREAK_UP</span></td><td>Key level (ORB/PDH/Swing High) broken on RVOL &gt; 1.5× + EMA bullish. Breakout confirmed by volume.</td></tr>
+    <tr><td><span class="chip chip-red">STRUCTURE_BREAK_DOWN</span></td><td>Key support broken on high volume. Breakdown confirmed.</td></tr>
+    <tr><td><span class="chip chip-green">VWAP_RESET_BULL</span></td><td>Price converged to VWAP from above, then reclaimed on volume + EMA bullish. Clean re-entry.</td></tr>
+    <tr><td><span class="chip chip-red">VWAP_RESET_BEAR</span></td><td>Inverse — price rallied to VWAP from below, then rejected.</td></tr>
+    <tr><td><span class="chip chip-green">EXHAUSTION_REVERSAL_BULL</span></td><td>4+ consecutive red bars, then strong green close on volume. Selling exhaustion detected.</td></tr>
+    <tr><td><span class="chip chip-red">EXHAUSTION_REVERSAL_BEAR</span></td><td>4+ consecutive green bars, then strong red close. Buying exhaustion.</td></tr>
+    <tr><td><span class="chip chip-cyan">POC_MAGNET</span></td><td>Price pulled to POC, held, then moved decisively away on volume.</td></tr>
+  </table>
+
+  <h3>Tier 2 — WATCH (Confidence ≥ 0.65)</h3>
+  <p>Monitor closely. May need additional confirmation before acting.</p>
+  <table>
+    <tr><th>Alert</th><th>Setup</th></tr>
+    <tr><td><span class="chip chip-green">HIGH_CONF_BULL</span></td><td>AI prediction UP with ≥ 0.75 confidence + EMA bullish. Single-indicator confirmation.</td></tr>
+    <tr><td><span class="chip chip-red">HIGH_CONF_BEAR</span></td><td>AI prediction DOWN with ≥ 0.75 confidence + EMA bearish.</td></tr>
+  </table>
+
+  <h3>Tier 3 — CONTEXT (Informational)</h3>
+  <p>Background signals for awareness. Consolidations, buildups, and lower-confidence readings.</p>
+
+  <h3>Suppression &amp; Conflict</h3>
+  <ul>
+    <li><strong>Conflict Warning:</strong> If bullish AND bearish alerts fire on the same bar, both are downgraded to Tier 3 with a <span class="chip chip-orange">⊘ WARNING</span> tag.</li>
+    <li><strong>Prior Rejection:</strong> If the prior bar had a strong opposite signal, new signals are suppressed to prevent whipsaws.</li>
+  </ul>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- 8. PATTERNS -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <h2 id="patterns">8. Pattern Engine &amp; Traffic Lights</h2>
+
+  <p>
+    The pattern engine runs in real time on each ticker, analyzing the last 20 signal bars plus
+    candle structure to identify the current market pattern. Each pattern produces a
+    <strong>traffic light</strong>, a <strong>label</strong>, and an <strong>action recommendation</strong>.
+  </p>
+
+  <h3>Patterns (Priority Order)</h3>
+  <table>
+    <tr><th>Pattern</th><th>Traffic Light</th><th>Condition</th><th>Action</th></tr>
+    <tr>
+      <td><strong>BREAKOUT</strong></td>
+      <td><span class="chip chip-green">🟢</span> / <span class="chip chip-red">🔴</span></td>
+      <td>≥1 COILING bar in last 5 + current GREEN/RED + confidence ≥ 0.65</td>
+      <td>Trade the breakout. Momentum confirmed.</td>
+    </tr>
+    <tr>
+      <td><strong>FAKEOUT</strong></td>
+      <td><span class="chip chip-orange">🟠</span></td>
+      <td>Previous COILING + signal flipped sharply</td>
+      <td>Do not chase. Likely a trap. Wait for re-entry.</td>
+    </tr>
+    <tr>
+      <td><strong>REJECTION</strong></td>
+      <td><span class="chip chip-orange">🟠</span></td>
+      <td>Strong prior bar (conf ≥ 0.70), current flipped</td>
+      <td>Do not chase. Potential trap or range boundary.</td>
+    </tr>
+    <tr>
+      <td><strong>REVERSAL</strong></td>
+      <td><span class="chip chip-green">🟢</span> / <span class="chip chip-red">🔴</span></td>
+      <td>4+ consecutive same-color bars, then flip with ≥ 0.65 confidence</td>
+      <td>Consider entry on confirmation. Trend may be shifting.</td>
+    </tr>
+    <tr>
+      <td><strong>BOUNCE</strong></td>
+      <td><span class="chip chip-yellow">🟡</span></td>
+      <td>Last 3 bars: RED → YELLOW → GREEN (or inverse)</td>
+      <td>Watch for follow-through. May be a dead-cat bounce.</td>
+    </tr>
+    <tr>
+      <td><strong>CONTINUATION</strong></td>
+      <td><span class="chip chip-green">🟢</span> / <span class="chip chip-red">🔴</span></td>
+      <td>≥3 consecutive same-color bars in matching structure (UPTREND/DOWNTREND)</td>
+      <td>Trade with the trend. Momentum favors the direction.</td>
+    </tr>
+    <tr>
+      <td><strong>BUILDUP</strong></td>
+      <td><span class="chip chip-yellow">🟡</span></td>
+      <td>≥2 COILING bars in last 5 + current not GREEN/RED</td>
+      <td>Energy building. Prepare for a breakout move.</td>
+    </tr>
+    <tr>
+      <td><strong>CHOP ZONE</strong></td>
+      <td><span class="chip chip-grey">⚫</span></td>
+      <td>≥3 YELLOW bars in last 5 OR ≥3 CHOPPY structure bars</td>
+      <td>Stay flat. No edge. Wait for clean directional setup.</td>
+    </tr>
+  </table>
+
+  <h3>Signal Chip Colors</h3>
+  <div class="badge-grid">
+    <span class="chip chip-green">BUY — Bullish signal</span>
+    <span class="chip chip-red">SELL — Bearish signal</span>
+    <span class="chip chip-yellow">CAUT — Cautious / mixed</span>
+    <span class="chip chip-grey">STAY — Abstain (low confidence)</span>
+  </div>
+
+  <h3>Signal Age</h3>
+  <p>Minutes since the last color transition — visible on each chip:</p>
+  <ul>
+    <li><strong>0–5 min:</strong> Fresh signal, just flipped</li>
+    <li><strong>5–15 min:</strong> Established, likely holding</li>
+    <li><strong>15+ min:</strong> Aging signal, watch for reversal</li>
+  </ul>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- 9. DETAIL VIEW -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <h2 id="detail">9. Detail View &amp; Analysis Panels</h2>
+
+  <p>Click any ticker card to open its detail view (right panel on desktop, full-screen on mobile).</p>
+
+  <h3>30-Minute Timeline</h3>
+  <p>
+    At the top of the detail view, a visual bar chart shows 30 minutes of trend + structure data.
+    Each column represents one bar with two layers:
+  </p>
+  <ul>
+    <li><strong>Trend row (top):</strong> Signal color based on AI prediction</li>
+    <li><strong>Structure row (bottom):</strong> Candle structure color (green/red/gold/grey)</li>
+    <li>When both rows agree, the setup has maximum conviction</li>
+  </ul>
+
+  <h3>Candlestick Chart</h3>
+  <p>Interactive chart with overlays (see <a href="#chart">Chart Controls</a>).</p>
+
+  <h3>Market Read Panel</h3>
+  <p>Displays the current AI prediction, confidence, and the complete list of triggered rules with explanations.</p>
+
+  <h3>Tape Read / Candle Context Card</h3>
+  <p>Shows structure type, detected candlestick patterns, volume character, pace, close position, HOD/LOD, ATR-14, and the optional LLM-generated senior trader narrative.</p>
+
+  <h3>Prediction Card</h3>
+  <p>Compact view: direction arrow, confidence %, and top 3 rules.</p>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- 10. CONFLUENCE -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <h2 id="confluence">10. Confluence Analysis</h2>
+
+  <p>
+    The Confluence Panel merges volume profile levels (POC, VAL, VAH) with multi-timeframe
+    pivot analysis across daily, weekly, and monthly horizons.
+  </p>
+
+  <h3>Fusion Score (0–1)</h3>
+  <p>
+    Measures how aligned the current setup is across multiple timeframes:
+  </p>
+  <ul>
+    <li><strong>≥ 0.75:</strong> Strong confluence — setup validates across timeframes. Highest conviction.</li>
+    <li><strong>0.50 – 0.74:</strong> Moderate confluence — some alignment, worth monitoring.</li>
+    <li><strong>&lt; 0.50:</strong> Weak confluence — timeframes disagree. Lower conviction.</li>
+  </ul>
+
+  <h3>Confluence Bias</h3>
+  <div class="badge-grid">
+    <span class="chip chip-green">BULL — Multi-TF bullish alignment</span>
+    <span class="chip chip-red">BEAR — Multi-TF bearish alignment</span>
+    <span class="chip chip-grey">MIXED — Timeframes conflict</span>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- 11. TAPE READ -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <h2 id="tape-read">11. Tape Read &amp; Senior Trader Narrative</h2>
+
+  <p>
+    The optional <strong>Senior Trader Read</strong> section uses an LLM to synthesize the last 30 minutes
+    of candle data with the current AI evaluation into a 3-line narrative:
+  </p>
+  <ol>
+    <li><strong>Setup Label</strong> — ≤ 5 words summarizing the setup (e.g., "Bull Flag Pullback")</li>
+    <li><strong>Tape vs. Structure</strong> — Reconciles any conflict between tape reading and indicator signals, with specific price levels</li>
+    <li><strong>Next Probable Move</strong> — Predicted direction + the confirm/invalidate levels to watch</li>
+  </ol>
+
+  <div class="callout callout-warn">
+    <strong>Note:</strong> The Senior Trader Read requires an LLM provider to be configured (Gemini, OpenAI, Anthropic, or Ollama).
+    If LLM is disabled, this section shows a "Generate" button that is inactive.
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- 12. CHART -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <h2 id="chart">12. Chart Controls</h2>
+
+  <h3>Overlays</h3>
+  <table>
+    <tr><th>Overlay</th><th>Color</th><th>Meaning</th></tr>
+    <tr><td>EMA 9</td><td><span style="color:#42a5f5">■</span> Blue</td><td>Fast exponential moving average</td></tr>
+    <tr><td>EMA 21</td><td><span style="color:#ff9800">■</span> Orange</td><td>Medium exponential moving average</td></tr>
+    <tr><td>VWAP</td><td><span style="color:#26a69a">■</span> Teal</td><td>Volume-weighted average price</td></tr>
+    <tr><td>Support levels</td><td><span style="color:#26a69a">- -</span> Dashed green</td><td>Key support zones</td></tr>
+    <tr><td>Resistance levels</td><td><span style="color:#ef5350">- -</span> Dashed red</td><td>Key resistance zones</td></tr>
+  </table>
+
+  <h3>Session Shading</h3>
+  <table>
+    <tr><th>Color</th><th>Session</th></tr>
+    <tr><td><span style="background:rgba(38,166,154,0.05);padding:2px 12px;border-radius:3px">Light green</span></td><td>Regular hours (09:30–16:00 ET)</td></tr>
+    <tr><td><span style="background:rgba(99,102,241,0.05);padding:2px 12px;border-radius:3px">Light indigo</span></td><td>Pre-market (04:00–09:30 ET)</td></tr>
+    <tr><td><span style="background:rgba(255,152,0,0.05);padding:2px 12px;border-radius:3px">Light orange</span></td><td>After-hours (16:00–20:00 ET)</td></tr>
+  </table>
+
+  <h3>Interactions</h3>
+  <ul>
+    <li><strong>Zoom:</strong> Scroll wheel (mobile: pinch)</li>
+    <li><strong>Pan:</strong> Click + drag horizontally</li>
+    <li><strong>Reset:</strong> Double-click to reset zoom</li>
+    <li><strong>Crosshair:</strong> Hover shows OHLCV, timestamp, and indicator values</li>
+  </ul>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- 13. ALERTS PANEL -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <h2 id="alerts-panel">13. Alerts Panel</h2>
+
+  <p>
+    The alerts sidebar (desktop: right edge; mobile: bell icon modal) displays composite alerts in
+    reverse chronological order.
+  </p>
+
+  <h3>Alert Card Anatomy</h3>
+  <ul>
+    <li><strong>Direction arrow:</strong> ▲ UP, ▼ DOWN, or ⚠ WARNING</li>
+    <li><strong>Signal type:</strong> e.g., POWER_TREND_BULL, STRUCTURE_BREAK_DOWN</li>
+    <li><strong>Tier badge:</strong> <span class="chip chip-green">ACT</span> / <span class="chip chip-yellow">WATCH</span> / <span class="chip chip-grey">CONTEXT</span></li>
+    <li><strong>Ticker:</strong> Bold, right-aligned</li>
+    <li><strong>Time:</strong> HH:MM:SS when the alert fired</li>
+    <li><strong>Confidence bar:</strong> Color-coded (green ≥ 75%, yellow ≥ 65%, red &lt; 65%)</li>
+    <li><strong>Component chips:</strong> Which indicators confirmed (EMA State, VWAP Motion, Daily Trend, etc.)</li>
+  </ul>
+
+  <p>Click any alert to jump to that ticker's detail view.</p>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- 14. MOBILE -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <h2 id="mobile">14. Mobile &amp; PWA Support</h2>
+
+  <h3>Install as App</h3>
+  <p>
+    Picker is a Progressive Web App (PWA). On <strong>iOS Safari</strong>, tap Share → "Add to Home Screen".
+    On <strong>Android Chrome</strong>, tap the install banner or Menu → "Install app". This gives you
+    a native-app experience with offline caching and push notifications.
+  </p>
+
+  <h3>Mobile-Specific Features</h3>
+  <ul>
+    <li><strong>Single-column layout</strong> — Cards stack vertically for easy scrolling</li>
+    <li><strong>Full-screen detail view</strong> — Tap card → opens as modal with back button</li>
+    <li><strong>Bell icon + badge</strong> — Shows unseen alert count; tap to open alerts modal</li>
+    <li><strong>Touch gestures</strong> — Pinch-zoom and swipe on charts</li>
+    <li><strong>Subscribe to alerts</strong> — Tap the bell to enable push notifications for Tier 1 &amp; 2 alerts</li>
+  </ul>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- 15. PUSH -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <h2 id="push">15. Push Notifications</h2>
+
+  <p>
+    When subscribed, you receive push notifications for <strong>Tier 1</strong> and <strong>Tier 2</strong> composite alerts,
+    even when the app is minimized or your phone is locked.
+  </p>
+
+  <h3>Notification Format</h3>
+  <p>
+    <code>Picker ▲ AAPL @ $194.53 — Power Trend [2m]</code><br>
+    <code>Tier 1 · 78% confidence</code>
+  </p>
+
+  <h3>Actions</h3>
+  <ul>
+    <li><strong>Tap notification</strong> — Opens Picker and navigates directly to that ticker's detail view</li>
+    <li><strong>Dismiss</strong> — Alert is still visible in the alerts panel</li>
+    <li><strong>Unsubscribe</strong> — Use the bell icon in the header to disable push</li>
+  </ul>
+
+  <div class="callout callout-info">
+    <strong>Cross-TF dedup:</strong> If the same alert fires on both 2m and 5m within 5 minutes, you only receive one push notification.
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- 16. MARKET HOURS -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <h2 id="market-hours">16. Market Hours &amp; Off-Hours Mode</h2>
+
+  <h3>During Regular Hours (09:30–16:00 ET)</h3>
+  <ul>
+    <li>Full live dashboard with real-time WebSocket updates</li>
+    <li>Candles close every 2m or 5m (based on selected TF)</li>
+    <li>Predictions and alerts fire continuously</li>
+  </ul>
+
+  <h3>Outside Market Hours</h3>
+  <ul>
+    <li><strong>Gate panel</strong> replaces the live dashboard</li>
+    <li>Ticker list with last-known prices (still editable — add/remove tickers)</li>
+    <li><strong>Countdown timer</strong>: "Market opens in X hours Y minutes" (updates per second)</li>
+    <li>Clicking a ticker shows <strong>historical detail view</strong> with previous session data</li>
+    <li>WebSocket disabled; no real-time updates</li>
+  </ul>
+
+  <h3>NYSE Holidays</h3>
+  <p>
+    Picker recognizes all NYSE holidays (full closures and early closes at 1:00 PM ET) through 2028.
+    On holidays, the dashboard shows a holiday banner with the holiday name and the next trading day.
+  </p>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- 17. COSTS -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <h2 id="costs">17. AWS Cost Dashboard</h2>
+
+  <p>
+    Click <strong>$ Costs</strong> in the header to open the cost monitoring modal. Displays:
+  </p>
+  <ul>
+    <li><strong>MTD spend</strong> — Current month-to-date cost</li>
+    <li><strong>vs. last month</strong> — Percentage change (color-coded)</li>
+    <li><strong>Daily &amp; 7-day average</strong> — Spend rate trends</li>
+    <li><strong>End-of-month projection</strong> — Estimated total if current rate continues</li>
+    <li><strong>Budget utilization</strong> — Percentage of budget consumed (warning thresholds: yellow at 75%, red at 90%)</li>
+    <li><strong>By-service breakdown</strong> — EC2, data transfer, storage, etc.</li>
+    <li><strong>Cost alerts</strong> — Info / warning / critical notifications based on spend rate</li>
+  </ul>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- 18. ADMIN -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <h2 id="admin">18. Admin Panel</h2>
+
+  <p>Available to admin users only. Click the <strong>Admin</strong> button in the header.</p>
+
+  <h3>Sessions Tab</h3>
+  <ul>
+    <li>View all active and inactive user sessions</li>
+    <li>Each row shows: username, IP address, browser/OS, created time, last seen</li>
+    <li><strong>Kill session</strong> button — Forcibly terminates a user's session (with audit trail)</li>
+    <li>Auto-refreshes every 30 seconds</li>
+  </ul>
+
+  <h3>Login History Tab</h3>
+  <ul>
+    <li>Recent 50 login attempts (successful and failed)</li>
+    <li>Username, IP, browser/OS, timestamp, success/failure indicator</li>
+    <li>Login rate limiting: 5 attempts per 5 minutes per IP address</li>
+  </ul>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- 19. GLOSSARY -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <h2 id="glossary">19. Glossary</h2>
+
+  <table>
+    <tr><th>Term</th><th>Definition</th></tr>
+    <tr><td><strong>ATR</strong></td><td>Average True Range — a 14-period measure of price volatility per bar</td></tr>
+    <tr><td><strong>Confluence</strong></td><td>Multiple indicators or timeframes agreeing on the same directional bias</td></tr>
+    <tr><td><strong>EMA</strong></td><td>Exponential Moving Average — a weighted average that emphasizes recent prices</td></tr>
+    <tr><td><strong>HH/HL</strong></td><td>Higher High / Higher Low — bullish swing structure confirmation</td></tr>
+    <tr><td><strong>HOD / LOD</strong></td><td>High of Day / Low of Day</td></tr>
+    <tr><td><strong>LH/LL</strong></td><td>Lower High / Lower Low — bearish swing structure confirmation</td></tr>
+    <tr><td><strong>NR7</strong></td><td>Narrowest Range of last 7 bars — often precedes a big move</td></tr>
+    <tr><td><strong>ORB</strong></td><td>Opening Range Breakout — the high and low of the first 15 minutes of regular hours</td></tr>
+    <tr><td><strong>PDH / PDL</strong></td><td>Previous Day High / Previous Day Low</td></tr>
+    <tr><td><strong>POC</strong></td><td>Point of Control — the price level with the most volume traded in the session</td></tr>
+    <tr><td><strong>RSI</strong></td><td>Relative Strength Index — momentum oscillator measuring overbought/oversold conditions</td></tr>
+    <tr><td><strong>RTH</strong></td><td>Regular Trading Hours (09:30–16:00 ET for NYSE)</td></tr>
+    <tr><td><strong>RVOL</strong></td><td>Relative Volume — current bar's volume divided by the 20-bar average</td></tr>
+    <tr><td><strong>S/R</strong></td><td>Support and Resistance — key price levels where buying or selling pressure concentrates</td></tr>
+    <tr><td><strong>TF</strong></td><td>Timeframe (2m or 5m)</td></tr>
+    <tr><td><strong>VAH / VAL</strong></td><td>Value Area High / Value Area Low — bounds of the 70% volume cluster around POC</td></tr>
+    <tr><td><strong>VWAP</strong></td><td>Volume-Weighted Average Price — institutional fair-value benchmark, resets each session</td></tr>
+  </table>
+
+</div>
+
+<a href="#top" class="back-top" title="Back to top">↑</a>
+
+<footer>
+  <p>Picker User Manual · Updated June 2026 · <a href="/app">Open Dashboard</a> · <a href="/landing.html">About Picker</a></p>
+</footer>
+
+</body>
+</html>

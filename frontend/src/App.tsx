@@ -289,6 +289,19 @@ function App() {
                   display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, lineHeight: 1,
                 }}
               >? Help</button>
+              <a
+                href="/manual.html"
+                target="_blank"
+                rel="noopener noreferrer"
+                title="User Manual"
+                style={{
+                  background: 'rgba(34,211,238,0.08)', border: '1px solid rgba(34,211,238,0.35)',
+                  borderRadius: 5, padding: '3px 9px', cursor: 'pointer',
+                  color: '#22d3ee', fontSize: '0.68rem', fontWeight: 700,
+                  display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, lineHeight: 1,
+                  textDecoration: 'none',
+                }}
+              >📖 Manual</a>
               <button
                 onClick={() => setCostOpen(true)}
                 title="AWS cost dashboard"
@@ -369,6 +382,20 @@ function App() {
                   display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, lineHeight: 1,
                 }}
               >?</button>
+              <a
+                href="/manual.html"
+                target="_blank"
+                rel="noopener noreferrer"
+                title="User Manual"
+                aria-label="User Manual"
+                style={{
+                  background: 'rgba(34,211,238,0.08)', border: '1px solid rgba(34,211,238,0.35)',
+                  borderRadius: 5, padding: '3px 6px', cursor: 'pointer',
+                  color: '#22d3ee', fontSize: '0.85rem', fontWeight: 700,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                  textDecoration: 'none', lineHeight: 1,
+                }}
+              >📖</a>
               <button
                 onClick={() => setCostOpen(true)}
                 title="AWS cost dashboard"

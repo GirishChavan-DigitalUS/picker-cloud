@@ -59,7 +59,8 @@ COOKIE_SAMESITE       = "strict"               # same-origin PWA; strict is safe
 HTPASSWD_PATH         = os.environ.get("PICKER_HTPASSWD_PATH", "/etc/nginx/.htpasswd-picker")
 DEV_USER              = os.environ.get("PICKER_DEV_USER")
 DEV_PASS              = os.environ.get("PICKER_DEV_PASS")
-APPUSER_SESSION_LIMIT = int(os.environ.get("APPUSER_SESSION_LIMIT", "5"))LOGIN_RATE_LIMIT      = 5                      # max login attempts per IP per window
+APPUSER_SESSION_LIMIT = int(os.environ.get("APPUSER_SESSION_LIMIT", "5"))
+LOGIN_RATE_LIMIT      = 5                      # max login attempts per IP per window
 LOGIN_RATE_WINDOW     = 300                     # 5-minute sliding window (seconds)
 
 # In-memory rate limiter for login attempts (per IP)

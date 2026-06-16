@@ -180,9 +180,9 @@ class ConfluenceAnalyzer:
         bin_volume = np.zeros(num_bins)
 
         # Vectorized: extract arrays to avoid pandas iterrows overhead
-        highs = df[\"high\"].values.astype(float)
-        lows = df[\"low\"].values.astype(float)
-        volumes = df[\"volume\"].values.astype(float)
+        highs = df["high"].values.astype(float)
+        lows = df["low"].values.astype(float)
+        volumes = df["volume"].values.astype(float)
         bin_starts = bins[:-1]
         bin_ends = bins[1:]
 
